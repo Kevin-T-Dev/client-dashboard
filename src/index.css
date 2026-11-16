@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Sweet pink: primary actions, yoga, navigation */
+  --color-brand-50: #fff7fb;
+  --color-brand-100: #ffe8f3;
+  --color-brand-200: #ffd0e6;
+  --color-brand-300: #f9a8cc;
+  --color-brand-400: #f078ae;
+  --color-brand-500: #e25596;
+  --color-brand-600: #d63d86;
+  --color-brand-700: #b42a6e;
+  --color-brand-800: #92265b;
+  --color-brand-900: #78224d;
+
+  /* Berry: appointments, kept distinct from the primary rose */
+  --color-accent-50: #faf6f8;
+  --color-accent-100: #f4e7ee;
+  --color-accent-200: #e8cedc;
+  --color-accent-300: #d6abc4;
+  --color-accent-400: #c083a8;
+  --color-accent-500: #a8648c;
+  --color-accent-600: #8d4d74;
+  --color-accent-700: #743d5f;
+  --color-accent-800: #60344f;
+  --color-accent-900: #512d44;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: #fff6fa;
+  background-image:
+    radial-gradient(900px 420px at 8% -10%, #ffe4f1 0%, transparent 60%),
+    radial-gradient(700px 380px at 100% 0%, #ffd0e6 0%, transparent 52%),
+    radial-gradient(520px 320px at 70% 110%, #fff0f6 0%, transparent 70%);
+  color: var(--color-stone-900);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Base UI: create a separate stacking context so portaled popups sit above the app. */
+#root {
+  isolation: isolate;
+  min-height: 100%;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  min-width: 0;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in {
+    animation: none;
+  }
+}
