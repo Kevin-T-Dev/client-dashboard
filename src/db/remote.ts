@@ -67,7 +67,7 @@ function empty(value: string | undefined): string | null {
 export class SupabaseSchemaError extends Error {
   constructor() {
     super(
-      'The Supabase project has no dashboard tables yet. In the Supabase SQL editor, run supabase/migrations/20251116000000_initial_schema.sql, then reload this app.',
+      'The Supabase dashboard schema is missing or out of date. Ask the administrator to check the migration setup in the README, then reload this app.',
     )
     this.name = 'SupabaseSchemaError'
   }
@@ -77,63 +77,6 @@ function assertSchema(error: { code?: string; message: string } | null): void {
   if (!error) return
   if (error.code === 'PGRST205' || error.message.includes('schema cache')) throw new SupabaseSchemaError()
   throw new Error(error.message)
-}
-
-/** True after a full upload has finished. A partial upload stays false and can be retried. */
-export async function remoteIsReady(): Promise<boolean> {
-  const { data, error } = await getSupabase().from('sync_state').select('ready').eq('id', 'device').maybeSingle()
-  assertSchema(error)
-  return Boolean((data as { ready?: boolean } | null)?.ready)
-}
-
-export async function markRemoteReady(): Promise<void> {
-  fail(
-    (
-      await getSupabase()
-        .from('sync_state')
-        .upsert({ id: 'device', ready: true, updated_at: new Date().toISOString() })
-    ).error,
-  )
-}
-
-/** True after the one-time removal of the on-device sample rows. */
-export async function isFreshStart(): Promise<boolean> {
-  const { data, error } = await getSupabase().from('sync_state').select('ready').eq('id', 'fresh-start').maybeSingle()
-  assertSchema(error)
-  return Boolean((data as { ready?: boolean } | null)?.ready)
-}
-
-export async function markFreshStart(): Promise<void> {
-  fail(
-    (
-      await getSupabase()
-        .from('sync_state')
-        .upsert({ id: 'fresh-start', ready: true, updated_at: new Date().toISOString() })
-    ).error,
-  )
-}
-
-/** Deletes every dashboard row in Supabase. Junction tables have no `id` column. */
-export async function discardStoredData(): Promise<void> {
-  const supabase = getSupabase()
-  const byId = [
-    'appointments',
-    'yoga_sessions',
-    'tasks',
-    'media',
-    'students',
-    'lesson_plans',
-    'beauty_packages',
-  ]
-  for (const table of byId) {
-    fail((await supabase.from(table).delete().not('id', 'is', null)).error)
-  }
-  fail((await supabase.from('student_assigned_plans').delete().not('student_id', 'is', null)).error)
-  fail((await supabase.from('lesson_plan_images').delete().not('lesson_plan_id', 'is', null)).error)
-  const listed = await supabase.storage.from(BUCKET).list()
-  if (!listed.error && listed.data?.length) {
-    await supabase.storage.from(BUCKET).remove(listed.data.map((file) => file.name))
-  }
 }
 
 export async function pushStudent(row: Student): Promise<void> {

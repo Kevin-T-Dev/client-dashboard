@@ -1,4 +1,4 @@
--- Sign-in gate for the Kelly Dashboard.
+-- Sign-in gate for the Client Dashboard.
 --
 -- 1. A public.profiles row per auth user, with an `approved` flag that the
 --    dashboard owner flips by hand (anyone can register; only approved users
@@ -10,7 +10,7 @@
 -- Run this in the Supabase SQL editor (Database -> SQL). It is safe to re-run.
 --
 -- To approve someone afterwards:
---   update public.profiles set approved = true where email = 'kelly@example.com';
+--   update public.profiles set approved = true where id = '<verified-auth-user-uuid>';
 
 -- 1. Profiles ---------------------------------------------------------------
 
@@ -76,6 +76,7 @@ create policy "profiles: read own"
   using (id = auth.uid());
 
 revoke all on table public.profiles from anon;
+grant select on table public.profiles to authenticated;
 
 -- 2. Dashboard tables -------------------------------------------------------
 

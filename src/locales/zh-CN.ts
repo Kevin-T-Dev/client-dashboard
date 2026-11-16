@@ -441,7 +441,7 @@ export const zh: typeof en = {
     registerTitle: '创建账户',
     registerSubtitle: '注册一次，之后用邮箱和密码登录。',
     name: '你的名字',
-    namePlaceholder: 'Kelly',
+    namePlaceholder: '你的名字',
     email: '邮箱',
     emailPlaceholder: 'you@example.com',
     password: '密码',
