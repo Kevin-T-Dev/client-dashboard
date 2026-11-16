@@ -49,7 +49,7 @@ npm run preview   # serve the production build
 
 With Supabase configured, the app opens with a **sign-in page** (`/sign-in`) and a **register page** (`/register`: name, email, password). Without Supabase the pages are skipped and the offline sample-data mode works as before.
 
-Registering creates a Supabase Auth user and, through a database trigger, a row in `public.profiles` with `approved = false`. A signed-in but unapproved user sees a "Waiting for approval" screen and cannot read or write any data. The checked-in policies give all approved accounts full access to the same workspace. Approve only accounts trusted to read and change all dashboard data. Confirm the existing `media` bucket is private and inspect its effective Storage policies before sharing the app.
+Registering creates a Supabase Auth user and, through a database trigger, a row in `public.profiles` with `approved = false`. A signed-in but unapproved user sees a "Waiting for approval" screen and cannot read or write any data. The base policies grant approved accounts full access to the same workspace. Complete the client-only setup below before using the project for client data.
 
 **One-time setup in Supabase**
 
@@ -57,11 +57,18 @@ Registering creates a Supabase Auth user and, through a database trigger, a row 
 2. Authentication → Sign In / Providers → Email: turn **Confirm email off**. Supabase's built-in mailer only delivers to members of your Supabase organisation (and 2 emails per hour), so the client would never receive a confirmation link. Keep it on only if you add custom SMTP.
 3. Authentication → URL Configuration: set **Site URL** to the Render URL and add `http://localhost:5173/**` to the redirect list.
 
-**Approving someone** after they register (SQL editor):
+**Restricting the existing workspace to one client account** (SQL editor):
 
-```sql
-update public.profiles set approved = true where id = '<verified-auth-user-uuid>';
-```
+1. Verify the client's Supabase Auth user UUID. Approve that account by UUID:
+
+   ```sql
+   update public.profiles set approved = true where id = '<verified-auth-user-uuid>';
+   ```
+
+2. Replace the nil UUID in `supabase/setup/restrict_to_client.sql` with the same verified Auth user UUID. Run the entire file as one transaction in the SQL editor after the base migrations. The script refuses to run without a real approved account. Keep the configured copy outside Git.
+3. Before sharing the app, verify in a staging project that the client can read and update a test record and download a test image, and that an approved second account, a pending account, and a signed-out browser cannot access them. Confirm the `media` bucket is private. Keep Supabase secret and service-role keys server-side.
+
+This setup treats the existing rows and files as belonging to the designated client. Use a separate Supabase project with sample data for development. To change the designated account, rerun the setup with the replacement UUID only if that account should inherit the entire workspace. To protect the client-only policies, the checked-in base auth migration refuses to rerun after this setup.
 
 The sidebar shows who is signed in and has a **Sign out** button; signing out also clears the on-device cache.
 

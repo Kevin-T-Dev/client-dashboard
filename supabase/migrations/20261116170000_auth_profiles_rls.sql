@@ -7,10 +7,25 @@
 --    only. Anonymous access is removed.
 -- 3. The private "media" storage bucket gets the same rule.
 --
--- Run this in the Supabase SQL editor (Database -> SQL). It is safe to re-run.
+-- Apply before supabase/setup/restrict_to_client.sql.
 --
 -- To approve someone afterwards:
 --   update public.profiles set approved = true where id = '<verified-auth-user-uuid>';
+
+begin;
+
+-- Reapplying the baseline must never undo client-only access.
+do $$
+begin
+  if exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects'
+      and policyname = 'media: client account only'
+  ) then
+    raise exception 'Client-only access is already active; do not reapply the baseline auth migration';
+  end if;
+end;
+$$;
 
 -- 1. Profiles ---------------------------------------------------------------
 
@@ -161,3 +176,5 @@ create policy "media: approved users update"
 create policy "media: approved users delete"
   on storage.objects for delete to authenticated
   using (bucket_id = 'media' and public.is_approved());
+
+commit;

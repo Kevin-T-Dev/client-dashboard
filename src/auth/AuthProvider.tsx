@@ -40,29 +40,30 @@ export const MISSING_PROFILES = 'missing-profiles'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-async function fetchApproval(userId: string): Promise<{ approval: Approval; error: string | null }> {
-  const { data, error } = await getSupabase()
-    .from('profiles')
-    .select('approved')
-    .eq('id', userId)
-    .maybeSingle()
+async function fetchApproval(): Promise<{ approval: Approval; error: string | null }> {
+  const { data, error } = await getSupabase().rpc('is_approved')
   if (error) {
-    if (error.code === 'PGRST205' || error.message.includes('schema cache')) {
+    if (error.code === 'PGRST202' || error.message.includes('schema cache')) {
       return { approval: 'error', error: MISSING_PROFILES }
     }
     return { approval: 'error', error: error.message }
   }
-  const approved = Boolean((data as { approved?: boolean } | null)?.approved)
-  return { approval: approved ? 'approved' : 'pending', error: null }
+  return { approval: data === true ? 'approved' : 'pending', error: null }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const configured = isSupabaseConfigured()
   const [loading, setLoading] = useState(configured)
   const [session, setSession] = useState<Session | null>(null)
-  const [approval, setApproval] = useState<Approval>('checking')
-  const [approvalError, setApprovalError] = useState<string | null>(null)
+  const [checkedApproval, setCheckedApproval] = useState<{
+    userId: string
+    approval: Approval
+    error: string | null
+  } | null>(null)
   const userId = session?.user.id ?? null
+  const currentApproval = checkedApproval?.userId === userId ? checkedApproval : null
+  const approval = currentApproval?.approval ?? 'checking'
+  const approvalError = currentApproval?.error ?? null
 
   useEffect(() => {
     if (!configured) return
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Only update state in here: awaiting Supabase inside this callback can deadlock the client.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       if (!active) return
+      setCheckedApproval((checked) => checked?.userId === next?.user.id ? checked : null)
       setSession(next)
       setLoading(false)
     })
@@ -88,12 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return
     let active = true
-    setApproval('checking')
-    setApprovalError(null)
-    void fetchApproval(userId).then((result) => {
-      if (!active) return
-      setApproval(result.approval)
-      setApprovalError(result.error)
+    void fetchApproval().then((result) => {
+      if (active) setCheckedApproval({ userId, ...result })
     })
     return () => {
       active = false
@@ -102,9 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshApproval = useCallback(async () => {
     if (!userId) return
-    const result = await fetchApproval(userId)
-    setApproval(result.approval)
-    setApprovalError(result.error)
+    const result = await fetchApproval()
+    setCheckedApproval((checked) => checked?.userId === userId ? { userId, ...result } : checked)
   }, [userId])
 
   const signIn = useCallback(async (email: string, password: string) => {
