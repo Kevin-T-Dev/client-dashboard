@@ -5,7 +5,7 @@
 # Supabase values below (sync: false keeps them out of the repo).
 services:
   - type: web
-    name: kelly-dashboard
+    name: client-dashboard
     runtime: static
     branch: main
     buildCommand: npm ci && npm run build

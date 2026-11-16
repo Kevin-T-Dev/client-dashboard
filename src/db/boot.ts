@@ -1,14 +1,5 @@
 import { db } from '@/db/db'
-import {
-  discardStoredData,
-  installSync,
-  isFreshStart,
-  markFreshStart,
-  markRemoteReady,
-  remoteIsReady,
-  replaceLocalFromRemote,
-  setRemoteMuted,
-} from '@/db/remote'
+import { installSync, replaceLocalFromRemote, setRemoteMuted } from '@/db/remote'
 import { seedIfEmpty } from '@/db/seed'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
@@ -17,7 +8,7 @@ let boot: Promise<void> | null = null
 /**
  * Opens the dashboard database.
  * With Supabase configured, the cloud copy is the only source of truth.
- * The first launch discards the bundled sample rows instead of uploading them.
+ * Cloud startup only reads Supabase, including on the first launch.
  */
 export function bootDatabase(): Promise<void> {
   if (!boot) {
@@ -27,18 +18,7 @@ export function bootDatabase(): Promise<void> {
         await seedIfEmpty()
         return
       }
-      if (!(await isFreshStart())) {
-        await discardStoredData()
-        await clearLocalCache()
-        await markFreshStart()
-        await markRemoteReady()
-        return
-      }
-      if (await remoteIsReady()) await replaceLocalFromRemote()
-      else {
-        await clearLocalCache()
-        await markRemoteReady()
-      }
+      await replaceLocalFromRemote()
     })()
   }
   return boot

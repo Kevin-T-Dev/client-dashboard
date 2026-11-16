@@ -3,11 +3,12 @@ import { initReactI18next } from 'react-i18next'
 import { en } from '@/locales/en'
 import { zh } from '@/locales/zh-CN'
 
-const STORAGE_KEY = 'kelly-lang'
+const STORAGE_KEY = 'client-dashboard-lang'
+const LEGACY_STORAGE_KEY = 'kelly-lang'
 
 function storedLanguage(): 'en' | 'zh-CN' {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
     if (saved === 'en' || saved === 'zh-CN') return saved
   } catch {
     /* private mode */
