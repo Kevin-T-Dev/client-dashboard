@@ -9,7 +9,6 @@ import { AuthLayout } from './AuthLayout'
 import { PasswordInput } from './PasswordInput'
 
 interface SignInState {
-  from?: string
   /** Set by the register page after a sign-up that still needs email confirmation. */
   registeredEmail?: string
 }
@@ -24,7 +23,7 @@ export function SignInPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!auth.configured || auth.session) return <Navigate to={state?.from ?? '/'} replace />
+  if (!auth.configured || auth.session) return <Navigate to="/" replace />
 
   async function submit(event: FormEvent) {
     event.preventDefault()

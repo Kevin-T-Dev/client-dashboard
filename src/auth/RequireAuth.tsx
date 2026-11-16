@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Navigate, Outlet, useLocation } from 'react-router'
+import { Navigate, Outlet } from 'react-router'
 import { bootDatabase } from '@/db/boot'
 import { AuthProblemPage, PendingApprovalPage } from '@/pages/auth/PendingApprovalPage'
 import { useAuth } from './AuthProvider'
@@ -53,13 +53,10 @@ function BootGate() {
 export function RequireAuth() {
   const auth = useAuth()
   const { t } = useTranslation()
-  const location = useLocation()
 
   if (!auth.configured) return <BootGate />
   if (auth.loading) return <FullScreenNote>{t('common.loading')}</FullScreenNote>
-  if (!auth.session) {
-    return <Navigate to="/sign-in" replace state={{ from: location.pathname + location.search }} />
-  }
+  if (!auth.session) return <Navigate to="/sign-in" replace />
   if (auth.approval === 'checking') return <FullScreenNote>{t('auth.checking')}</FullScreenNote>
   if (auth.approval === 'error') return <AuthProblemPage />
   if (auth.approval === 'pending') return <PendingApprovalPage />

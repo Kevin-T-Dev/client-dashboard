@@ -7,7 +7,7 @@ export function Brand() {
         <Flower size={18} />
       </div>
       <div className="leading-tight">
-        <div className="text-sm font-semibold text-stone-900">Kelly Dashboard</div>
+        <div className="text-sm font-semibold text-stone-900">Your Dashboard</div>
       </div>
     </div>
   )

@@ -58,6 +58,8 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <YogaKanban />
+
       <Card>
         <CardHeader
           title={t('dashboard.upcoming')}
@@ -75,8 +77,6 @@ export function DashboardPage() {
           )}
         </CardBody>
       </Card>
-
-      <YogaKanban />
     </div>
   )
 }
