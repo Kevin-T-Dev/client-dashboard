@@ -44,8 +44,8 @@ export function bootDatabase(): Promise<void> {
   return boot
 }
 
-/** Drops the on-device cache without echoing those deletes back to Supabase. */
-async function clearLocalCache(): Promise<void> {
+/** Drops the on-device cache without echoing those deletes back to Supabase. Also used at sign-out. */
+export async function clearLocalCache(): Promise<void> {
   setRemoteMuted(true)
   try {
     await db.transaction(

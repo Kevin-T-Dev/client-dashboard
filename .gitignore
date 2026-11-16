@@ -37,6 +37,7 @@ Thumbs.db
 
 # Claude Code per-machine settings (keep .claude/settings.json if you add one)
 .claude/settings.local.json
+.claude/launch.json
 
 # Deploy CLI link folders
 .vercel

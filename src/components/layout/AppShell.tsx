@@ -1,12 +1,14 @@
-import { CalendarHeart, Flower, Flower2, LayoutDashboard, RotateCcw } from 'lucide-react'
+import { CalendarHeart, Flower2, LayoutDashboard, LogOut, RotateCcw, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation } from 'react-router'
+import { displayName, useAuth } from '@/auth/AuthProvider'
 import { resetAndReseed } from '@/db/seed'
 import { cn } from '@/lib/cn'
-import { isSupabaseConfigured } from '@/lib/supabase'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { notify } from '../ui/Toaster'
+import { Brand } from './Brand'
+import { LanguageSwitch } from './LanguageSwitch'
 
 const nav = [
   { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true },
@@ -14,21 +16,8 @@ const nav = [
   { to: '/appointments', labelKey: 'nav.appointments', icon: CalendarHeart, end: false },
 ]
 
-function Brand() {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-300/60">
-        <Flower size={18} />
-      </div>
-      <div className="leading-tight">
-        <div className="text-sm font-semibold text-stone-900">Kelly Dashboard</div>
-      </div>
-    </div>
-  )
-}
-
 function NavItems({ orientation }: { orientation: 'vertical' | 'horizontal' }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   return (
     <nav
       className={cn(
@@ -54,35 +43,40 @@ function NavItems({ orientation }: { orientation: 'vertical' | 'horizontal' }) {
           {t(item.labelKey)}
         </NavLink>
       ))}
-      <div className={cn('flex gap-1', orientation === 'vertical' ? 'mt-4' : 'ml-1')}>
-        {(
-          [
-            ['zh-CN', '中文'],
-            ['en', 'EN'],
-          ] as const
-        ).map(([code, label]) => {
-          const active = i18n.language.startsWith('zh') ? code === 'zh-CN' : code === 'en'
-          return (
-            <button
-              key={code}
-              type="button"
-              onClick={() => void i18n.changeLanguage(code)}
-              className={cn(
-                'rounded-lg px-2 py-1 text-xs font-medium',
-                active ? 'bg-brand-600 text-white' : 'text-stone-500 hover:bg-brand-50 hover:text-brand-800',
-              )}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+      <LanguageSwitch className={orientation === 'vertical' ? 'mt-4' : 'ml-1'} />
     </nav>
+  )
+}
+
+/** Who is signed in, with sign-out. Shown in the sidebar when Supabase is configured. */
+function UserPanel() {
+  const { t } = useTranslation()
+  const auth = useAuth()
+  return (
+    <div className="rounded-xl border border-brand-100 bg-white/70 p-3">
+      <div className="flex items-center gap-2">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+          <UserRound size={16} />
+        </div>
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-sm font-medium text-stone-900">{displayName(auth.user)}</div>
+          <div className="truncate text-xs text-stone-500">{auth.user?.email}</div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => void auth.signOut()}
+        className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+      >
+        <LogOut size={14} /> {t('auth.signOut')}
+      </button>
+    </div>
   )
 }
 
 export function AppShell() {
   const { t } = useTranslation()
+  const auth = useAuth()
   const [resetOpen, setResetOpen] = useState(false)
   const location = useLocation()
 
@@ -94,7 +88,9 @@ export function AppShell() {
           <NavItems orientation="vertical" />
         </div>
         <div className="mt-auto text-xs text-stone-500">
-          {!isSupabaseConfigured() && (
+          {auth.configured ? (
+            <UserPanel />
+          ) : (
             <button
               type="button"
               onClick={() => setResetOpen(true)}
@@ -108,7 +104,20 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-brand-100 bg-white/80 px-4 py-3 backdrop-blur-md md:hidden">
-          <Brand />
+          <div className="flex items-center justify-between gap-3">
+            <Brand />
+            {auth.configured && (
+              <button
+                type="button"
+                onClick={() => void auth.signOut()}
+                aria-label={t('auth.signOut')}
+                title={t('auth.signOut')}
+                className="flex size-9 items-center justify-center rounded-xl text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+              >
+                <LogOut size={18} />
+              </button>
+            )}
+          </div>
           <div className="mt-3 -mx-1">
             <NavItems orientation="horizontal" />
           </div>

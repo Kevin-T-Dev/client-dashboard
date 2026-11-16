@@ -45,6 +45,26 @@ npm run preview   # serve the production build
 
 `npm run lint` uses oxlint. On some locked-down Windows machines the oxlint native binary is blocked by Application Control policy; swap in ESLint if that happens.
 
+## Sign-in and accounts
+
+With Supabase configured, the app opens with a **sign-in page** (`/sign-in`) and a **register page** (`/register`: name, email, password). Without Supabase the pages are skipped and the offline sample-data mode works as before.
+
+Registering creates a Supabase Auth user and, through a database trigger, a row in `public.profiles` with `approved = false`. A signed-in but unapproved user sees a "Waiting for approval" screen and cannot read or write any data. Row Level Security on every dashboard table and on the `media` storage bucket allows only approved, signed-in users; anonymous access is gone.
+
+**One-time setup in Supabase**
+
+1. SQL editor: run `supabase/migrations/20261116170000_auth_profiles_rls.sql`. It is safe to re-run.
+2. Authentication → Sign In / Providers → Email: turn **Confirm email off**. Supabase's built-in mailer only delivers to members of your Supabase organisation (and 2 emails per hour), so the client would never receive a confirmation link. Keep it on only if you add custom SMTP.
+3. Authentication → URL Configuration: set **Site URL** to the Render URL and add `http://localhost:5173/**` to the redirect list.
+
+**Approving someone** after they register (SQL editor):
+
+```sql
+update public.profiles set approved = true where email = 'kelly@example.com';
+```
+
+The sidebar shows who is signed in and has a **Sign out** button; signing out also clears the on-device cache.
+
 ## Deploy to Render
 
 The app is a static Vite build that talks to Supabase from the browser, so it runs as a Render **Static Site**. `render.yaml` describes the service and `.node-version` pins the Node version Render builds with.
@@ -60,20 +80,23 @@ The `VITE_` values are baked into the bundle at build time. Render redeploys on 
 
 Setting it up by hand instead of the blueprint: **New → Static Site**, build command `npm ci && npm run build`, publish directory `dist`, the two environment variables above, and a **Redirects/Rewrites** rule with source `/*`, destination `/index.html`, action **Rewrite**, so React Router routes still work on reload.
 
-> **Access:** there is no sign-in yet. Anyone with the Render URL can open the dashboard, and the publishable key in the bundle allows whatever the Supabase Row Level Security policies allow. Add Supabase Auth and `authenticated`-only policies before sharing the URL beyond the client.
+> **Access:** the dashboard is behind Supabase Auth (see "Sign-in and accounts"). Run the auth migration and set the Site URL before sharing the Render link.
 
 ## Project layout
 
 ```
 src/
-  db/            Dexie schema (db.ts), record types (types.ts), CRUD helpers (api.ts), sample data (seed.ts)
+  auth/          AuthProvider (session + approval state), RequireAuth (route gate), authErrors
+  db/            Dexie schema (db.ts), record types (types.ts), CRUD helpers (api.ts), sample data (seed.ts),
+                 boot.ts + remote.ts (Supabase sync)
   lib/           dates, money, tags, image compression, package status, plan ranking, labels
   components/
     ui/          Button, Card, Badge, Dialog, ConfirmDialog, Select, Field, Checkbox, Toaster,
                  ActionMenu, SectionTabs, TagInput, ImageUpload, MediaImage, StatTile, EmptyState…
-    layout/      AppShell (sidebar + mobile header)
+    layout/      AppShell (sidebar + mobile header), Brand, LanguageSwitch
     calendar/    MonthCalendar, AgendaList
   pages/
+    auth/        SignInPage, RegisterPage, PendingApprovalPage, AuthLayout, PasswordInput
     dashboard/   DashboardPage
     yoga/        YogaPage (tabs), YogaSchedule + SessionDialog, YogaKanban + TaskDialog,
                  LessonPlans + LessonPlanDialog + LessonPlanDetail + StudentDialog
