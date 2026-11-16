@@ -22,10 +22,12 @@ Everything is full CRUD and persists locally. Sample data is seeded on first run
 - **Base UI** (`@base-ui/react`, the renamed successor of `@base-ui-components/react`) for all interactive primitives: Dialog, AlertDialog, Select, Tabs, Menu, Checkbox, Toast, Field/Input, Progress, Button
 - **Tailwind CSS v4** for styling (Base UI ships no CSS, so every component is styled here)
 - **Dexie** (IndexedDB) + `dexie-react-hooks` for local persistence, incl. image blobs
+- **Supabase** (`@supabase/supabase-js`) as the cloud copy of the data and the `media` storage bucket; optional, see below
+- **i18next** + `react-i18next` for English and Simplified Chinese
 - **@dnd-kit** for the Kanban drag-and-drop
 - **react-router v8**, **date-fns**, **lucide-react** icons, **clsx**
 
-No backend yet. Data lives in the browser's IndexedDB, so it is per device and per browser profile.
+Data is cached in the browser's IndexedDB. When `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set (copy `.env.example` to `.env`), Supabase is the source of truth and the local copy mirrors it. Without them the app runs offline with sample data.
 
 ## Run it
 
@@ -42,6 +44,23 @@ npm run preview   # serve the production build
 ```
 
 `npm run lint` uses oxlint. On some locked-down Windows machines the oxlint native binary is blocked by Application Control policy; swap in ESLint if that happens.
+
+## Deploy to Render
+
+The app is a static Vite build that talks to Supabase from the browser, so it runs as a Render **Static Site**. `render.yaml` describes the service and `.node-version` pins the Node version Render builds with.
+
+1. Push the repository to GitHub.
+2. In Render choose **New → Blueprint** and pick the repository. Render reads `render.yaml`.
+3. Render asks for two values. Both come from the Supabase dashboard:
+   - `VITE_SUPABASE_URL`: Project Settings → Data API → Project URL
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`: Project Settings → API Keys → Publishable key
+4. Click **Apply**. Render runs `npm ci && npm run build` and serves `dist/`. Every push to `main` redeploys.
+
+The `VITE_` values are baked into the bundle at build time. Render redeploys on its own when you change an environment variable, so the new values take effect after that build.
+
+Setting it up by hand instead of the blueprint: **New → Static Site**, build command `npm ci && npm run build`, publish directory `dist`, the two environment variables above, and a **Redirects/Rewrites** rule with source `/*`, destination `/index.html`, action **Rewrite**, so React Router routes still work on reload.
+
+> **Access:** there is no sign-in yet. Anyone with the Render URL can open the dashboard, and the publishable key in the bundle allows whatever the Supabase Row Level Security policies allow. Add Supabase Auth and `authenticated`-only policies before sharing the URL beyond the client.
 
 ## Project layout
 

@@ -1,0 +1,37 @@
+# Render Blueprint - https://render.com/docs/blueprint-spec
+#
+# In the Render dashboard choose New -> Blueprint and pick this repository.
+# Render reads this file, creates the static site, and asks you for the two
+# Supabase values below (sync: false keeps them out of the repo).
+services:
+  - type: web
+    name: kelly-dashboard
+    runtime: static
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+    routes:
+      # Client-side routing: every path serves index.html, so /yoga/schedule
+      # still works when the page is reloaded or opened from a bookmark.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      # Vite puts a content hash in every asset filename, so these never change.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin

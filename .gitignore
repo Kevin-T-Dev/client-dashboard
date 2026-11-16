@@ -28,3 +28,19 @@ supabase/.temp
 *.njsproj
 *.sln
 *.sw?
+
+# Windows
+Thumbs.db
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Claude Code per-machine settings (keep .claude/settings.json if you add one)
+.claude/settings.local.json
+
+# Deploy CLI link folders
+.vercel
+.netlify
+
+# Supabase CLI local state
+supabase/.branches
