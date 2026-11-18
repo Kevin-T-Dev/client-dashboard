@@ -9,7 +9,9 @@ export interface AgendaItem {
   end: string
   title: string
   subtitle?: ReactNode
-  tone: 'brand' | 'accent' | 'muted'
+  tone: 'brand' | 'accent' | 'muted' | 'task'
+  /** Shown without a time, e.g. a to-do due that day. */
+  allDay?: boolean
   badges?: ReactNode
   actions?: ReactNode
   onClick?: () => void
@@ -27,9 +29,11 @@ const bar: Record<AgendaItem['tone'], string> = {
   brand: 'bg-brand-500',
   accent: 'bg-accent-500',
   muted: 'bg-stone-300',
+  task: 'bg-amber-400',
 }
 
 export function AgendaRow({ item }: { item: AgendaItem }) {
+  const { t } = useTranslation()
   const Comp = item.onClick ? 'button' : 'div'
   return (
     <div className="flex items-stretch gap-3">
@@ -43,8 +47,14 @@ export function AgendaRow({ item }: { item: AgendaItem }) {
       >
         <span className={cn('mt-1 h-10 w-1 shrink-0 rounded-full', bar[item.tone])} />
         <span className="w-[4.5rem] shrink-0 pt-0.5 text-xs leading-5 text-stone-500 tabular-nums">
-          <span className="block font-medium text-stone-800">{fmtTime(item.start)}</span>
-          <span className="block">{fmtTime(item.end)}</span>
+          {item.allDay ? (
+            <span className="block font-medium text-amber-700">{t('column.todo')}</span>
+          ) : (
+            <>
+              <span className="block font-medium text-stone-800">{fmtTime(item.start)}</span>
+              <span className="block">{fmtTime(item.end)}</span>
+            </>
+          )}
         </span>
         <span className="min-w-0 flex-1">
           <span

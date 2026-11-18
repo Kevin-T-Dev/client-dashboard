@@ -1,7 +1,7 @@
 import { MailCheck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthProvider'
 import { describeAuthError } from '@/auth/authErrors'
 import { Button } from '@/components/ui/Button'
@@ -12,12 +12,21 @@ import { PasswordInput } from './PasswordInput'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD = 8
 
+export interface RegisterState {
+  /** Prefills the email field. */
+  email?: string
+  /** Set by the Forgot Password page when the email has no account. */
+  fromForgotPassword?: boolean
+}
+
 export function RegisterPage() {
   const { t } = useTranslation()
   const auth = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const state = (location.state ?? null) as RegisterState | null
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(state?.email ?? '')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,6 +96,11 @@ export function RegisterPage() {
       }
     >
       <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4" noValidate>
+        {state?.fromForgotPassword && state.email && !error && (
+          <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm leading-6 text-brand-800">
+            {t('auth.notRegisteredBody', { email: state.email })}
+          </p>
+        )}
         <FormField label={t('auth.name')}>
           <TextInput
             value={name}

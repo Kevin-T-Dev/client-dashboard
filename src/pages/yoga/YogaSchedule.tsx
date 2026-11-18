@@ -1,6 +1,6 @@
 import { startOfMonth } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Pencil, Plus, Trash, XCircle } from 'lucide-react'
+import { Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgendaList, type AgendaItem } from '@/components/calendar/AgendaList'
@@ -14,10 +14,12 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { notify } from '@/components/ui/Toaster'
 import { sessionsApi } from '@/db/api'
 import { db } from '@/db/db'
-import type { YogaSession } from '@/db/types'
+import type { YogaSession, Task } from '@/db/types'
 import { dayKey, fmtDayLabel, todayKey } from '@/lib/dates'
 import { useAppLabels } from '@/lib/labels'
 import { SessionDialog } from './SessionDialog'
+import { TaskDialog } from './TaskDialog'
+import { datedTasks, taskToEvent, useTaskAgendaItem } from './taskAgenda'
 
 export function YogaSchedule() {
   const { t } = useTranslation()
@@ -26,26 +28,33 @@ export function YogaSchedule() {
   const [selectedDay, setSelectedDay] = useState(todayKey())
   const [dialog, setDialog] = useState<{ open: boolean; session?: YogaSession; day?: string }>({ open: false })
   const [deleting, setDeleting] = useState<YogaSession | null>(null)
+  const [taskDialog, setTaskDialog] = useState<{ open: boolean; task?: Task; day?: string }>({ open: false })
 
   const sessions = useLiveQuery(() => db.sessions.toArray(), []) ?? []
   const students = useLiveQuery(() => db.students.orderBy('name').toArray(), []) ?? []
   const plans = useLiveQuery(() => db.lessonPlans.orderBy('title').toArray(), []) ?? []
+  const tasks = datedTasks(useLiveQuery(() => db.tasks.toArray(), []) ?? [], 'yoga')
+  const toTaskItem = useTaskAgendaItem((task) => setTaskDialog({ open: true, task }))
 
   const studentName = useMemo(() => new Map(students.map((s) => [s.id, s.name])), [students])
   const planTitle = useMemo(() => new Map(plans.map((p) => [p.id, p.title])), [plans])
 
-  const events: CalendarEvent[] = sessions.map((s) => ({
-    id: s.id,
-    start: s.start,
-    end: s.end,
-    title: s.title,
-    tone: s.status === 'cancelled' ? 'muted' : 'brand',
-  }))
+  const events: CalendarEvent[] = [
+    ...sessions.map((s) => ({
+      id: s.id,
+      start: s.start,
+      end: s.end,
+      title: s.title,
+      tone: s.status === 'cancelled' ? ('muted' as const) : ('brand' as const),
+    })),
+    ...tasks.map(taskToEvent),
+  ]
 
   const now = new Date()
   const daySessions = sessions
     .filter((s) => dayKey(s.start) === selectedDay)
     .sort((a, b) => a.start.localeCompare(b.start))
+  const dayTasks = tasks.filter((task) => task.dueDate === selectedDay)
   const upcoming = sessions
     .filter((s) => s.status === 'planned' && new Date(s.end) >= now)
     .sort((a, b) => a.start.localeCompare(b.start))
@@ -104,6 +113,9 @@ export function YogaSchedule() {
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-stone-400" /> {t('yoga.cancelled')}
           </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-amber-500" /> {t('column.todo')}
+          </span>
         </div>
         <Button leadingIcon={<Plus size={16} />} onClick={() => setDialog({ open: true, day: selectedDay })}>
           {t('yoga.newSession')}
@@ -134,18 +146,30 @@ export function YogaSchedule() {
                   : t('yoga.sessionCount_other', { n: daySessions.length })
               }
               actions={
-                <Button
-                  size="icon-sm"
-                  variant="secondary"
-                  aria-label={t('yoga.addOnDay')}
-                  onClick={() => setDialog({ open: true, day: selectedDay })}
-                >
-                  <Plus size={16} />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    size="icon-sm"
+                    variant="secondary"
+                    aria-label={t('task.addOnDay')}
+                    title={t('task.addOnDay')}
+                    onClick={() => setTaskDialog({ open: true, day: selectedDay })}
+                  >
+                    <ListTodo size={16} />
+                  </Button>
+                  <Button
+                    size="icon-sm"
+                    variant="secondary"
+                    aria-label={t('yoga.addOnDay')}
+                    title={t('yoga.addOnDay')}
+                    onClick={() => setDialog({ open: true, day: selectedDay })}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
               }
             />
             <CardBody>
-              {sessions.length === 0 ? (
+              {sessions.length === 0 && tasks.length === 0 ? (
                 <EmptyState
                   icon={<Plus size={20} />}
                   title={t('common.noData')}
@@ -157,7 +181,11 @@ export function YogaSchedule() {
                   }
                 />
               ) : (
-                <AgendaList grouped={false} items={daySessions.map(toItem)} emptyMessage={t('yoga.noneToday')} />
+                <AgendaList
+                  grouped={false}
+                  items={[...dayTasks.map((task) => toTaskItem(task)), ...daySessions.map(toItem)]}
+                  emptyMessage={t('yoga.noneToday')}
+                />
               )}
             </CardBody>
           </Card>
@@ -186,6 +214,14 @@ export function YogaSchedule() {
           setDialog({ open: false })
           setDeleting(s)
         }}
+      />
+
+      <TaskDialog
+        open={taskDialog.open}
+        onOpenChange={(open) => setTaskDialog((d) => ({ ...d, open }))}
+        task={taskDialog.task}
+        defaultDueDate={taskDialog.day ?? selectedDay}
+        defaultArea="yoga"
       />
 
       <ConfirmDialog

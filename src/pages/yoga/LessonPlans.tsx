@@ -371,8 +371,23 @@ function PlanCard({ match, student, onOpen, onEdit, onDelete, onToggleAssign }: 
   const cover = plan.imageIds[0]
   const total = student?.focusAreas.length ?? 0
   return (
-    <Card className={cn('flex flex-col overflow-hidden', assigned && student && 'ring-2 ring-brand-300')}>
-      <button type="button" onClick={onOpen} className="group text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+    <Card
+      role="button"
+      tabIndex={0}
+      aria-label={plan.title}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+      className={cn(
+        'group flex cursor-pointer flex-col overflow-hidden outline-none transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-500',
+        assigned && student && 'ring-2 ring-brand-300',
+      )}
+    >
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-brand-100 to-brand-200">
           {cover ? (
             <MediaImage id={cover} className="size-full transition-transform duration-300 group-hover:scale-[1.03]" />
@@ -387,13 +402,10 @@ function PlanCard({ match, student, onOpen, onEdit, onDelete, onToggleAssign }: 
             </span>
           )}
         </div>
-      </button>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <button type="button" onClick={onOpen} className="text-left text-base font-semibold text-stone-900 hover:text-brand-800">
-              {plan.title}
-            </button>
+            <h3 className="text-base font-semibold text-stone-900 transition-colors group-hover:text-brand-800">{plan.title}</h3>
             <p className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
               <span>{labels.planLevelLabel[plan.level]}</span>
               <span className="inline-flex items-center gap-1">
@@ -401,13 +413,16 @@ function PlanCard({ match, student, onOpen, onEdit, onDelete, onToggleAssign }: 
               </span>
             </p>
           </div>
-          <ActionMenu
-            items={[
-              { label: t('plans.view'), icon: <BookOpen size={14} />, onClick: onOpen },
-              { label: t('common.edit'), icon: <Pencil size={14} />, onClick: onEdit },
-              { label: t('common.delete'), icon: <Trash size={14} />, danger: true, onClick: onDelete },
-            ]}
-          />
+          {/* Keep menu clicks from opening the card underneath. */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <ActionMenu
+              items={[
+                { label: t('plans.view'), icon: <BookOpen size={14} />, onClick: onOpen },
+                { label: t('common.edit'), icon: <Pencil size={14} />, onClick: onEdit },
+                { label: t('common.delete'), icon: <Trash size={14} />, danger: true, onClick: onDelete },
+              ]}
+            />
+          </div>
         </div>
 
         {plan.description && <p className="line-clamp-2 text-sm text-stone-600">{plan.description}</p>}
@@ -442,7 +457,10 @@ function PlanCard({ match, student, onOpen, onEdit, onDelete, onToggleAssign }: 
               variant={assigned ? 'secondary' : 'primary'}
               size="sm"
               leadingIcon={assigned ? <Check size={14} /> : undefined}
-              onClick={onToggleAssign}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleAssign()
+              }}
             >
               {assigned
                 ? t('plans.assigned', { name: student.name.split(' ')[0] })

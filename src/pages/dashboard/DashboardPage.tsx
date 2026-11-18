@@ -1,16 +1,19 @@
 import { addDays } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarHeart } from 'lucide-react'
-import { useMemo } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgendaList, type AgendaItem } from '@/components/calendar/AgendaList'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { db } from '@/db/db'
-import { startOfToday } from '@/lib/dates'
+import type { Task } from '@/db/types'
+import { dayKey, startOfToday, todayKey } from '@/lib/dates'
 import { useAppLabels } from '@/lib/labels'
+import { TaskDialog } from '@/pages/yoga/TaskDialog'
 import { YogaKanban } from '@/pages/yoga/YogaKanban'
+import { datedTasks, useTaskAgendaItem } from '@/pages/yoga/taskAgenda'
 
 export function DashboardPage() {
   const { t } = useTranslation()
@@ -18,12 +21,15 @@ export function DashboardPage() {
   const sessions = useLiveQuery(() => db.sessions.toArray(), []) ?? []
   const appointments = useLiveQuery(() => db.appointments.toArray(), []) ?? []
   const students = useLiveQuery(() => db.students.toArray(), []) ?? []
+  const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? []
+  const [taskDialog, setTaskDialog] = useState<{ open: boolean; task?: Task }>({ open: false })
+  const toTaskItem = useTaskAgendaItem((task) => setTaskDialog({ open: true, task }))
 
   const horizonEnd = addDays(startOfToday(), 7)
 
-  const studentName = useMemo(() => new Map(students.map((s) => [s.id, s.name])), [students])
+  const studentName = new Map(students.map((s) => [s.id, s.name]))
 
-  const upcoming: AgendaItem[] = useMemo(() => {
+  const upcoming: AgendaItem[] = (() => {
     const items: AgendaItem[] = []
     for (const s of sessions) {
       const d = new Date(s.start)
@@ -53,8 +59,17 @@ export function DashboardPage() {
         badges: <Badge tone="accent">{t('dashboard.appointment')}</Badge>,
       })
     }
+    // Open to-dos due this week. Overdue ones are listed under today so they stay in view.
+    const today = todayKey()
+    const lastDay = dayKey(horizonEnd)
+    for (const task of datedTasks(tasks)) {
+      if (task.column === 'done' || !task.dueDate || task.dueDate > lastDay) continue
+      const item = toTaskItem(task, true)
+      const start = `${today}T00:00:00`
+      items.push(task.dueDate < today ? { ...item, start, end: start } : item)
+    }
     return items.sort((x, y) => x.start.localeCompare(y.start))
-  }, [sessions, appointments, studentName, horizonEnd, labels, t])
+  })()
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,7 +81,7 @@ export function DashboardPage() {
           description={t('dashboard.upcomingHint')}
         />
         <CardBody className="h-80 overflow-y-auto">
-          {sessions.length === 0 && appointments.length === 0 ? (
+          {sessions.length === 0 && appointments.length === 0 && tasks.length === 0 ? (
             <EmptyState
               icon={<CalendarHeart size={20} />}
               title={t('common.noData')}
@@ -77,6 +92,12 @@ export function DashboardPage() {
           )}
         </CardBody>
       </Card>
+
+      <TaskDialog
+        open={taskDialog.open}
+        onOpenChange={(open) => setTaskDialog((d) => ({ ...d, open }))}
+        task={taskDialog.task}
+      />
     </div>
   )
 }

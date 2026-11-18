@@ -33,6 +33,15 @@ export interface AuthContextValue {
   refreshApproval: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signUp: (name: string, email: string, password: string) => Promise<SignUpResult>
+  /**
+   * Whether an account exists for this email. `null` when the check is unavailable
+   * (the email_registered migration has not been run, or the request failed).
+   */
+  isEmailRegistered: (email: string) => Promise<boolean | null>
+  /** Emails a link that opens `/reset-password` with a short-lived recovery session. */
+  requestPasswordReset: (email: string) => Promise<void>
+  /** Sets a new password for the signed-in (or recovering) user. */
+  updatePassword: (password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -129,6 +138,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const isEmailRegistered = useCallback(async (email: string): Promise<boolean | null> => {
+    const { data, error } = await getSupabase().rpc('email_registered', { p_email: email })
+    if (error) {
+      console.warn('Could not check the email address', error.message)
+      return null
+    }
+    return Boolean(data)
+  }, [])
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) throw error
+  }, [])
+
+  const updatePassword = useCallback(async (password: string) => {
+    const { error } = await getSupabase().auth.updateUser({ password })
+    if (error) throw error
+  }, [])
+
   const signOut = useCallback(async () => {
     const { error } = await getSupabase().auth.signOut()
     if (error) console.warn('Sign-out', error.message)
@@ -152,9 +182,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshApproval,
       signIn,
       signUp,
+      isEmailRegistered,
+      requestPasswordReset,
+      updatePassword,
       signOut,
     }),
-    [configured, loading, session, approval, approvalError, refreshApproval, signIn, signUp, signOut],
+    [
+      configured,
+      loading,
+      session,
+      approval,
+      approvalError,
+      refreshApproval,
+      signIn,
+      signUp,
+      isEmailRegistered,
+      requestPasswordReset,
+      updatePassword,
+      signOut,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
