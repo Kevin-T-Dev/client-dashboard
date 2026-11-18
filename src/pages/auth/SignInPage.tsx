@@ -70,6 +70,15 @@ export function SignInPage() {
         <FormField label={t('auth.password')}>
           <PasswordInput value={password} onValueChange={setPassword} autoComplete="current-password" />
         </FormField>
+        <div className="-mt-2 flex justify-end">
+          <Link
+            to="/forgot-password"
+            state={{ email: email.trim() }}
+            className="text-sm font-medium text-brand-700 hover:underline"
+          >
+            {t('auth.forgotLink')}
+          </Link>
+        </div>
         {error && (
           <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}

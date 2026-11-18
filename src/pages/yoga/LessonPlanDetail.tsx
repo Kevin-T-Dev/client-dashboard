@@ -1,4 +1,4 @@
-import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Pencil } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Pencil, UserPlus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/Badge'
@@ -8,7 +8,7 @@ import { FormField, TextArea, TextInput } from '@/components/ui/Field'
 import { MediaImage } from '@/components/ui/MediaImage'
 import { AppSelect } from '@/components/ui/Select'
 import { notify } from '@/components/ui/Toaster'
-import { sessionsApi } from '@/db/api'
+import { sessionsApi, studentsApi } from '@/db/api'
 import type { LessonPlan, Student } from '@/db/types'
 import { cn } from '@/lib/cn'
 import { buildRange, fmtDate, todayKey } from '@/lib/dates'
@@ -200,9 +200,32 @@ function CreateLessonForm({
 function DetailBody({ plan, students }: { plan: LessonPlan; students: Student[] }) {
   const { t } = useTranslation()
   const [index, setIndex] = useState(0)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const images = plan.imageIds
   const assignedTo = students.filter((s) => s.assignedPlanIds.includes(plan.id))
+  const unassigned = students.filter((s) => !s.assignedPlanIds.includes(plan.id))
+  const pending = unassigned.find((s) => s.id === pendingId)
   const current = images[Math.min(index, images.length - 1)]
+
+  async function assign() {
+    if (!pending) return
+    setBusy(true)
+    try {
+      await studentsApi.update(pending.id, { assignedPlanIds: [...pending.assignedPlanIds, plan.id] })
+      notify(t('plans.assignedToast', { name: pending.name }), plan.title)
+      setPendingId(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function unassign(student: Student) {
+    await studentsApi.update(student.id, {
+      assignedPlanIds: student.assignedPlanIds.filter((id) => id !== plan.id),
+    })
+    notify(t('plans.removed'), student.name)
+  }
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -284,17 +307,49 @@ function DetailBody({ plan, students }: { plan: LessonPlan; students: Student[] 
           {assignedTo.length ? (
             <ul className="flex flex-col gap-1">
               {assignedTo.map((s) => (
-                <li key={s.id} className="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2 text-sm">
-                  <span className="font-medium text-stone-800">{s.name}</span>
-                  <span className="text-xs text-stone-500">
-                    {t('plans.shared', { n: s.focusAreas.filter((area) => plan.focusAreas.includes(area)).length })}
-                  </span>
+                <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 py-1.5 pr-1.5 pl-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-stone-800">{s.name}</p>
+                    <p className="text-xs text-stone-500">
+                      {t('plans.shared', { n: s.focusAreas.filter((area) => plan.focusAreas.includes(area)).length })}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t('plans.unassign', { name: s.name })}
+                    onClick={() => void unassign(s)}
+                  >
+                    <X size={14} />
+                  </Button>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-sm text-stone-500">{t('plans.notAssigned')}</p>
           )}
+          <div className="mt-3 flex flex-col gap-2 rounded-lg border border-dashed border-brand-200 bg-brand-50/40 p-3">
+            <p className="text-sm font-medium text-stone-700">{t('plans.assignStudent')}</p>
+            {students.length === 0 ? (
+              <p className="text-xs text-stone-500">{t('plans.noStudentsYet')}</p>
+            ) : unassigned.length === 0 ? (
+              <p className="text-xs text-stone-500">{t('plans.allAssigned')}</p>
+            ) : (
+              <div className="flex gap-2">
+                <div className="min-w-0 flex-1">
+                  <AppSelect
+                    value={pendingId}
+                    onValueChange={setPendingId}
+                    items={unassigned.map((s) => ({ value: s.id, label: s.name }))}
+                    placeholder={t('plans.chooseStudent')}
+                  />
+                </div>
+                <Button leadingIcon={<UserPlus size={14} />} disabled={!pending || busy} onClick={() => void assign()}>
+                  {t('plans.assignAction')}
+                </Button>
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </div>

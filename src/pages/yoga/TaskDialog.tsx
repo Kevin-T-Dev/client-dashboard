@@ -10,13 +10,18 @@ import { notify } from '@/components/ui/Toaster'
 import { tasksApi } from '@/db/api'
 import { db } from '@/db/db'
 import type { Task, TaskArea, TaskColumn, TaskPriority } from '@/db/types'
+import { todayKey } from '@/lib/dates'
 import { useAppLabels } from '@/lib/labels'
+import { parseTaskLines } from './taskAgenda'
 
 export interface TaskDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   task?: Task
   defaultColumn?: TaskColumn
+  /** yyyy-MM-dd for a new task; defaults to today so it shows on the schedule. */
+  defaultDueDate?: string
+  defaultArea?: TaskArea
 }
 
 export function TaskDialog(props: TaskDialogProps) {
@@ -29,23 +34,25 @@ export function TaskDialog(props: TaskDialogProps) {
   )
 }
 
-function TaskForm({ onOpenChange, task, defaultColumn }: TaskDialogProps) {
+function TaskForm({ onOpenChange, task, defaultColumn, defaultDueDate, defaultArea }: TaskDialogProps) {
   const { t } = useTranslation()
   const labels = useAppLabels()
   const [title, setTitle] = useState(task?.title ?? '')
   const [description, setDescription] = useState(task?.description ?? '')
   const [column, setColumn] = useState<TaskColumn>(task?.column ?? defaultColumn ?? 'todo')
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'medium')
-  const [area, setArea] = useState<TaskArea>(task?.area === 'appointments' ? 'appointments' : 'yoga')
-  const [dueDate, setDueDate] = useState(task?.dueDate ?? '')
+  const [area, setArea] = useState<TaskArea>(
+    task ? (task.area === 'appointments' ? 'appointments' : 'yoga') : (defaultArea ?? 'yoga'),
+  )
+  const [dueDate, setDueDate] = useState(task ? (task.dueDate ?? '') : (defaultDueDate ?? todayKey()))
+  const titles = task ? [] : parseTaskLines(title)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function save() {
-    if (!title.trim()) return setError(t('task.needTitle'))
+    if (task ? !title.trim() : titles.length === 0) return setError(t('task.needTitle'))
     setError(null)
-    const data = {
-      title: title.trim(),
+    const shared = {
       description: description.trim() || undefined,
       column,
       priority,
@@ -53,13 +60,14 @@ function TaskForm({ onOpenChange, task, defaultColumn }: TaskDialogProps) {
       dueDate: dueDate || undefined,
     }
     if (task) {
-      await tasksApi.update(task.id, data)
-      notify(t('task.updated'), data.title)
+      await tasksApi.update(task.id, { ...shared, title: title.trim() })
+      notify(t('task.updated'), title.trim())
     } else {
       const last = await db.tasks.where('column').equals(column).sortBy('order')
-      const order = (last.at(-1)?.order ?? -1) + 1
-      await tasksApi.create({ ...data, order })
-      notify(t('task.added'), data.title)
+      const first = (last.at(-1)?.order ?? -1) + 1
+      for (const [i, line] of titles.entries()) await tasksApi.create({ ...shared, title: line, order: first + i })
+      if (titles.length === 1) notify(t('task.added'), titles[0])
+      else notify(t('task.addedMany', { n: titles.length }), titles.join(' · '))
     }
     onOpenChange(false)
   }
@@ -72,9 +80,15 @@ function TaskForm({ onOpenChange, task, defaultColumn }: TaskDialogProps) {
         void save()
       }}
     >
-      <FormField label={t('common.title')} error={error ?? undefined}>
-        <TextInput value={title} onValueChange={setTitle} placeholder={t('task.titlePh')} autoFocus />
-      </FormField>
+      {task ? (
+        <FormField label={t('common.title')} error={error ?? undefined}>
+          <TextInput value={title} onValueChange={setTitle} placeholder={t('task.titlePh')} autoFocus />
+        </FormField>
+      ) : (
+        <FormField label={t('common.title')} hint={t('task.batchHint')} error={error ?? undefined}>
+          <TextArea value={title} onValueChange={setTitle} placeholder={t('task.batchPh')} rows={4} />
+        </FormField>
+      )}
       <FormField label={t('task.details')}>
         <TextArea value={description} onValueChange={setDescription} placeholder={t('task.detailsPh')} />
       </FormField>
@@ -102,7 +116,9 @@ function TaskForm({ onOpenChange, task, defaultColumn }: TaskDialogProps) {
         <Button variant="secondary" onClick={() => onOpenChange(false)}>
           {t('common.cancel')}
         </Button>
-        <Button type="submit">{task ? t('common.save') : t('task.add')}</Button>
+        <Button type="submit">
+          {task ? t('common.save') : titles.length > 1 ? t('task.addMany', { n: titles.length }) : t('task.add')}
+        </Button>
       </div>
 
       {task && (

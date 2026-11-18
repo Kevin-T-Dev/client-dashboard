@@ -1,6 +1,6 @@
 import { startOfMonth } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Pencil, Plus, Trash, XCircle } from 'lucide-react'
+import { Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgendaList, type AgendaItem } from '@/components/calendar/AgendaList'
@@ -14,10 +14,12 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { notify } from '@/components/ui/Toaster'
 import { appointmentsApi, packagesApi } from '@/db/api'
 import { db } from '@/db/db'
-import type { Appointment } from '@/db/types'
+import type { Appointment, Task } from '@/db/types'
 import { dayKey, fmtDayLabel, todayKey } from '@/lib/dates'
 import { useAppLabels } from '@/lib/labels'
 import { sessionsRemaining } from '@/lib/packages'
+import { TaskDialog } from '@/pages/yoga/TaskDialog'
+import { datedTasks, taskToEvent, useTaskAgendaItem } from '@/pages/yoga/taskAgenda'
 import { AppointmentDialog } from './AppointmentDialog'
 
 export function AppointmentSchedule() {
@@ -27,23 +29,30 @@ export function AppointmentSchedule() {
   const [selectedDay, setSelectedDay] = useState(todayKey())
   const [dialog, setDialog] = useState<{ open: boolean; appointment?: Appointment; day?: string }>({ open: false })
   const [deleting, setDeleting] = useState<Appointment | null>(null)
+  const [taskDialog, setTaskDialog] = useState<{ open: boolean; task?: Task; day?: string }>({ open: false })
 
   const appointments = useLiveQuery(() => db.appointments.toArray(), []) ?? []
   const packages = useLiveQuery(() => db.packages.toArray(), []) ?? []
   const packageById = useMemo(() => new Map(packages.map((p) => [p.id, p])), [packages])
+  const tasks = datedTasks(useLiveQuery(() => db.tasks.toArray(), []) ?? [], 'appointments')
+  const toTaskItem = useTaskAgendaItem((task) => setTaskDialog({ open: true, task }))
 
-  const events: CalendarEvent[] = appointments.map((a) => ({
-    id: a.id,
-    start: a.start,
-    end: a.end,
-    title: `${a.title} · ${a.provider}`,
-    tone: a.status === 'cancelled' ? 'muted' : 'accent',
-  }))
+  const events: CalendarEvent[] = [
+    ...appointments.map((a) => ({
+      id: a.id,
+      start: a.start,
+      end: a.end,
+      title: `${a.title} · ${a.provider}`,
+      tone: a.status === 'cancelled' ? ('muted' as const) : ('accent' as const),
+    })),
+    ...tasks.map(taskToEvent),
+  ]
 
   const now = new Date()
   const dayItems = appointments
     .filter((a) => dayKey(a.start) === selectedDay)
     .sort((a, b) => a.start.localeCompare(b.start))
+  const dayTasks = tasks.filter((task) => task.dueDate === selectedDay)
   const upcoming = appointments
     .filter((a) => a.status === 'upcoming' && new Date(a.end) >= now)
     .sort((a, b) => a.start.localeCompare(b.start))
@@ -130,6 +139,9 @@ export function AppointmentSchedule() {
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-stone-400" /> {t('appointments.cancelled')}
           </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-amber-500" /> {t('column.todo')}
+          </span>
         </div>
         <Button
           variant="accent"
@@ -164,18 +176,30 @@ export function AppointmentSchedule() {
                   : t('appointments.count_other', { n: dayItems.length })
               }
               actions={
-                <Button
-                  size="icon-sm"
-                  variant="secondary"
-                  aria-label={t('appointments.addOnDay')}
-                  onClick={() => setDialog({ open: true, day: selectedDay })}
-                >
-                  <Plus size={16} />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    size="icon-sm"
+                    variant="secondary"
+                    aria-label={t('task.addOnDay')}
+                    title={t('task.addOnDay')}
+                    onClick={() => setTaskDialog({ open: true, day: selectedDay })}
+                  >
+                    <ListTodo size={16} />
+                  </Button>
+                  <Button
+                    size="icon-sm"
+                    variant="secondary"
+                    aria-label={t('appointments.addOnDay')}
+                    title={t('appointments.addOnDay')}
+                    onClick={() => setDialog({ open: true, day: selectedDay })}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
               }
             />
             <CardBody>
-              {appointments.length === 0 ? (
+              {appointments.length === 0 && tasks.length === 0 ? (
                 <EmptyState
                   icon={<Plus size={20} />}
                   title={t('common.noData')}
@@ -191,7 +215,11 @@ export function AppointmentSchedule() {
                   }
                 />
               ) : (
-                <AgendaList grouped={false} items={dayItems.map(toItem)} emptyMessage={t('appointments.noneToday')} />
+                <AgendaList
+                  grouped={false}
+                  items={[...dayTasks.map((task) => toTaskItem(task)), ...dayItems.map(toItem)]}
+                  emptyMessage={t('appointments.noneToday')}
+                />
               )}
             </CardBody>
           </Card>
@@ -220,6 +248,14 @@ export function AppointmentSchedule() {
           setDialog({ open: false })
           setDeleting(a)
         }}
+      />
+
+      <TaskDialog
+        open={taskDialog.open}
+        onOpenChange={(open) => setTaskDialog((d) => ({ ...d, open }))}
+        task={taskDialog.task}
+        defaultDueDate={taskDialog.day ?? selectedDay}
+        defaultArea="appointments"
       />
 
       <ConfirmDialog

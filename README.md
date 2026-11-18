@@ -56,6 +56,8 @@ Registering creates a Supabase Auth user and, through a database trigger, a row 
 1. SQL editor: run `supabase/migrations/20261116170000_auth_profiles_rls.sql`. It is safe to re-run.
 2. Authentication → Sign In / Providers → Email: turn **Confirm email off**. Supabase's built-in mailer only delivers to members of your Supabase organisation (and 2 emails per hour), so the client would never receive a confirmation link. Keep it on only if you add custom SMTP.
 3. Authentication → URL Configuration: set **Site URL** to the Render URL and add `http://localhost:5173/**` to the redirect list.
+4. Password reset: the sign-in page links to **Forgot password?** (`/forgot-password`), which emails a link to `/reset-password` where the user picks a new password. That page must be an allowed redirect, so also add `https://<your-render-url>/**` to the redirect list (the `localhost` entry covers local testing). Reset emails go through the same mailer as confirmations, so they only reach real clients once **custom SMTP** is set up (Authentication → Emails → SMTP Settings). The email text can be edited under Authentication → Emails → Reset Password.
+5. SQL editor: run `supabase/migrations/20261118120000_email_registered.sql`. Forgot Password uses it to check the email first and sends unknown addresses to the Register page. Without it, the reset link is sent without the check. Trade-off: anyone can use that page to learn whether an address has an account.
 
 **Approving someone** after they register (SQL editor):
 
@@ -96,7 +98,7 @@ src/
     layout/      AppShell (sidebar + mobile header), Brand, LanguageSwitch
     calendar/    MonthCalendar, AgendaList
   pages/
-    auth/        SignInPage, RegisterPage, PendingApprovalPage, AuthLayout, PasswordInput
+    auth/        SignInPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage, PendingApprovalPage, AuthLayout, PasswordInput
     dashboard/   DashboardPage
     yoga/        YogaPage (tabs), YogaSchedule + SessionDialog, YogaKanban + TaskDialog,
                  LessonPlans + LessonPlanDialog + LessonPlanDetail + StudentDialog

@@ -10,14 +10,14 @@ import {
   startOfWeek,
   subMonths,
 } from 'date-fns'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ListTodo } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/cn'
 import { dateLocale, dayKey, fmtMonth, fmtTime, fmtWeekday } from '@/lib/dates'
 import { Button } from '../ui/Button'
 
-export type CalendarTone = 'brand' | 'accent' | 'muted'
+export type CalendarTone = 'brand' | 'accent' | 'muted' | 'task'
 
 export interface CalendarEvent {
   id: string
@@ -25,6 +25,8 @@ export interface CalendarEvent {
   end: string
   title: string
   tone: CalendarTone
+  /** Shown without a time, e.g. a to-do due that day. */
+  allDay?: boolean
 }
 
 export interface MonthCalendarProps {
@@ -43,6 +45,14 @@ const chipTone: Record<CalendarTone, string> = {
   brand: 'bg-brand-100 text-brand-900',
   accent: 'bg-accent-100 text-accent-900',
   muted: 'bg-stone-100 text-stone-500 line-through',
+  task: 'bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200',
+}
+
+const dotTone: Record<CalendarTone, string> = {
+  brand: 'bg-brand-500',
+  accent: 'bg-accent-500',
+  muted: 'bg-stone-400',
+  task: 'bg-amber-500',
 }
 
 export function MonthCalendar({
@@ -154,9 +164,14 @@ export function MonthCalendar({
                       'hidden truncate rounded px-1.5 py-0.5 text-[11px] leading-4 sm:block',
                       chipTone[ev.tone],
                     )}
-                    title={`${fmtTime(ev.start)} ${ev.title}`}
+                    title={ev.allDay ? ev.title : `${fmtTime(ev.start)} ${ev.title}`}
                   >
-                    <span className="font-medium">{fmtTime(ev.start)}</span> {ev.title}
+                    {ev.allDay ? (
+                      <ListTodo size={11} className="mr-0.5 inline-block align-[-1px]" aria-hidden />
+                    ) : (
+                      <span className="font-medium">{fmtTime(ev.start)}</span>
+                    )}{' '}
+                    {ev.title}
                   </span>
                 ))}
                 {dayEvents.length > 0 && (
@@ -164,10 +179,7 @@ export function MonthCalendar({
                     {dayEvents.slice(0, 4).map((ev) => (
                       <span
                         key={ev.id}
-                        className={cn(
-                          'size-1.5 rounded-full',
-                          ev.tone === 'brand' ? 'bg-brand-500' : ev.tone === 'accent' ? 'bg-accent-500' : 'bg-stone-400',
-                        )}
+                        className={cn('size-1.5 rounded-full', dotTone[ev.tone])}
                       />
                     ))}
                   </span>

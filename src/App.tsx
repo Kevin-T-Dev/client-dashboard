@@ -8,7 +8,9 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { AppointmentSchedule } from '@/pages/appointments/AppointmentSchedule'
 import { AppointmentsPage } from '@/pages/appointments/AppointmentsPage'
 import { PackageCounter } from '@/pages/appointments/PackageCounter'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { SignInPage } from '@/pages/auth/SignInPage'
 import { LessonPlans } from '@/pages/yoga/LessonPlans'
 import { YogaPage } from '@/pages/yoga/YogaPage'
@@ -22,6 +24,8 @@ export default function App() {
           <Routes>
             <Route path="sign-in" element={<SignInPage />} />
             <Route path="register" element={<RegisterPage />} />
+            <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route index element={<DashboardPage />} />

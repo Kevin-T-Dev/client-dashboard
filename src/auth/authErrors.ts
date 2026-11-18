@@ -23,6 +23,10 @@ const byCode: Record<string, string> = {
   weak_password: 'auth.errors.weakPassword',
   signup_disabled: 'auth.errors.signupDisabled',
   email_address_invalid: 'auth.errors.emailInvalid',
+  same_password: 'auth.errors.samePassword',
+  otp_expired: 'auth.errors.resetLinkExpired',
+  session_not_found: 'auth.errors.resetLinkExpired',
+  user_not_found: 'auth.errors.resetLinkExpired',
 }
 
 /** Turns a Supabase auth error into one sentence for the form. */
