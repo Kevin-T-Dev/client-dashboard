@@ -1,5 +1,5 @@
 import { Trash } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { AppDialog } from '@/components/ui/Dialog'
@@ -18,7 +18,6 @@ export interface AppointmentDialogProps {
   appointment?: Appointment
   defaultDay: string
   packages: BeautyPackage[]
-  knownProviders: string[]
   onDelete?: (appointment: Appointment) => void
 }
 
@@ -45,7 +44,6 @@ function AppointmentForm({
   appointment,
   defaultDay,
   packages,
-  knownProviders,
   onDelete,
 }: AppointmentDialogProps) {
   const { t } = useTranslation()
@@ -65,7 +63,6 @@ function AppointmentForm({
   const [notes, setNotes] = useState(appointment?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const listId = useId()
 
   const usable = packages.filter((p) => p.id === appointment?.packageId || sessionsRemaining(p) > 0)
   const packageItems = [
@@ -83,8 +80,9 @@ function AppointmentForm({
     setPackageId(id)
     const pkg = packages.find((p) => p.id === id)
     if (!pkg) return
-    if (!provider.trim()) setProvider(pkg.provider)
-    if (!location.trim() && pkg.location) setLocation(pkg.location)
+    // The package record holds the shop and address, so picking one fills them in.
+    setProvider(pkg.provider)
+    if (pkg.location) setLocation(pkg.location)
     if (!title.trim()) setTitle(pkg.name.replace(/\s*x\s*\d+\s*$/i, ''))
     setCategory(pkg.category)
   }
@@ -137,12 +135,7 @@ function AppointmentForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label={t('appointmentForm.store')}>
-          <TextInput value={provider} onValueChange={setProvider} placeholder={t('appointmentForm.storePh')} list={listId} />
-          <datalist id={listId}>
-            {knownProviders.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
+          <TextInput value={provider} onValueChange={setProvider} placeholder={t('appointmentForm.storePh')} />
         </FormField>
         <FormField label={t('common.category')}>
           <AppSelect value={category} onValueChange={setCategory} items={labels.categories} tone="accent" />

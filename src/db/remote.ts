@@ -180,6 +180,7 @@ export async function pushSession(row: YogaSession): Promise<void> {
         id: row.id,
         title: row.title,
         kind: row.kind,
+        role: row.role ?? 'teaching',
         start_at: row.start,
         end_at: row.end,
         student_id: empty(row.studentId),
@@ -314,6 +315,7 @@ type SessionRow = {
   id: string
   title: string
   kind: YogaSession['kind']
+  role?: string | null
   start_at: string
   end_at: string
   student_id: string | null
@@ -475,6 +477,7 @@ export async function replaceLocalFromRemote(): Promise<void> {
     id: row.id,
     title: row.title,
     kind: row.kind,
+    role: row.role === 'attending' ? 'attending' : 'teaching',
     start: row.start_at,
     end: row.end_at,
     studentId: row.student_id ?? undefined,

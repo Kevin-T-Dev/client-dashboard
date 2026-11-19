@@ -58,6 +58,7 @@ Registering creates a Supabase Auth user and, through a database trigger, a row 
 3. Authentication → URL Configuration: set **Site URL** to the Render URL and add `http://localhost:5173/**` to the redirect list.
 4. Password reset: the sign-in page links to **Forgot password?** (`/forgot-password`), which emails a link to `/reset-password` where the user picks a new password. That page must be an allowed redirect, so also add `https://<your-render-url>/**` to the redirect list (the `localhost` entry covers local testing). Reset emails go through the same mailer as confirmations, so they only reach real clients once **custom SMTP** is set up (Authentication → Emails → SMTP Settings). The email text can be edited under Authentication → Emails → Reset Password.
 5. SQL editor: run `supabase/migrations/20261118120000_email_registered.sql`. Forgot Password uses it to check the email first and sends unknown addresses to the Register page. Without it, the reset link is sent without the check. Trade-off: anyone can use that page to learn whether an address has an account.
+6. SQL editor: run `supabase/migrations/20261119120000_session_role.sql` **before deploying** the version with teaching/attending sessions. It adds the `role` column to `yoga_sessions`; until it exists, saving a yoga session fails. It is safe to re-run.
 
 **Approving someone** after they register (SQL editor):
 
@@ -110,7 +111,7 @@ src/
 
 ## Data model (short)
 
-- `YogaSession` — title, kind, start/end, student, lesson plan, location, notes, status
+- `YogaSession` — title, kind, role (teaching or attending), start/end, student, lesson plan, location, notes, status
 - `Student` — name, focus areas (tags), goals, notes, assigned plan ids
 - `LessonPlan` — title, description, focus areas, level, duration, image ids
 - `MediaItem` — stored image blob

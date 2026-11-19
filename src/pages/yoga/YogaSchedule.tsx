@@ -1,6 +1,6 @@
 import { startOfMonth } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
+import { CalendarCheck, Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgendaList, type AgendaItem } from '@/components/calendar/AgendaList'
@@ -56,14 +56,20 @@ export function YogaSchedule() {
     .sort((a, b) => a.start.localeCompare(b.start))
   const dayTasks = tasks.filter((task) => task.dueDate === selectedDay)
   const upcoming = sessions
-    .filter((s) => s.status === 'planned' && new Date(s.end) >= now)
+    .filter((s) => (s.status === 'planned' || s.status === 'tbc') && new Date(s.end) >= now)
     .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, 6)
 
   async function setStatus(s: YogaSession, status: YogaSession['status']) {
     await sessionsApi.update(s.id, { status })
     notify(
-      status === 'done' ? t('yoga.markedDone') : status === 'cancelled' ? t('yoga.cancelledToast') : t('yoga.restored'),
+      status === 'done'
+        ? t('yoga.markedDone')
+        : status === 'cancelled'
+          ? t('yoga.cancelledToast')
+          : status === 'planned' && s.status === 'tbc'
+            ? t('yoga.confirmed')
+            : t('yoga.restored'),
       s.title,
     )
   }
@@ -79,6 +85,8 @@ export function YogaSchedule() {
     tone: s.status === 'cancelled' ? 'muted' : 'brand',
     badges: (
       <>
+        {s.role === 'attending' && <Badge tone="info">{t('role.attending')}</Badge>}
+        {s.status === 'tbc' && <Badge tone="pending">{t('sessionStatus.tbc')}</Badge>}
         {s.status === 'done' && <Badge tone="success">{t('sessionStatus.done')}</Badge>}
         {s.status === 'cancelled' && <Badge tone="neutral">{t('sessionStatus.cancelled')}</Badge>}
         {s.lessonPlanId && planTitle.get(s.lessonPlanId) && (
@@ -91,6 +99,9 @@ export function YogaSchedule() {
       <ActionMenu
         items={[
           { label: t('common.edit'), icon: <Pencil size={14} />, onClick: () => setDialog({ open: true, session: s }) },
+          ...(s.status === 'tbc'
+            ? [{ label: t('yoga.markConfirmed'), icon: <CalendarCheck size={14} />, onClick: () => void setStatus(s, 'planned') }]
+            : []),
           s.status === 'done'
             ? { label: t('yoga.markPlanned'), icon: <Check size={14} />, onClick: () => void setStatus(s, 'planned') }
             : { label: t('yoga.markDone'), icon: <Check size={14} />, onClick: () => void setStatus(s, 'done') },
@@ -114,7 +125,7 @@ export function YogaSchedule() {
             <span className="size-2.5 rounded-full bg-stone-400" /> {t('yoga.cancelled')}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-amber-500" /> {t('column.todo')}
+            <span className="size-2.5 rounded-full bg-amber-500" /> {t('task.legend')}
           </span>
         </div>
         <Button leadingIcon={<Plus size={16} />} onClick={() => setDialog({ open: true, day: selectedDay })}>
@@ -122,7 +133,7 @@ export function YogaSchedule() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Card>
           <CardBody className="pt-5">
             <MonthCalendar
@@ -140,11 +151,14 @@ export function YogaSchedule() {
           <Card>
             <CardHeader
               title={fmtDayLabel(selectedDay)}
-              description={
+              description={[
                 daySessions.length === 1
                   ? t('yoga.sessionCount', { n: daySessions.length })
-                  : t('yoga.sessionCount_other', { n: daySessions.length })
-              }
+                  : t('yoga.sessionCount_other', { n: daySessions.length }),
+                dayTasks.length === 1
+                  ? t('task.count', { n: dayTasks.length })
+                  : t('task.count_other', { n: dayTasks.length }),
+              ].join(' · ')}
               actions={
                 <div className="flex gap-1">
                   <Button

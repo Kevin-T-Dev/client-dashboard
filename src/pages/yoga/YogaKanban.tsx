@@ -23,6 +23,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Plus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { nowIso } from '@/db/api'
@@ -69,7 +70,10 @@ export function YogaKanban() {
   }, [stored])
 
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [area, setArea] = useState<AreaFilter>('all')
+  const [params, setParams] = useSearchParams()
+  const areaParam = params.get('area')
+  const area: AreaFilter = areaParam === 'yoga' || areaParam === 'appointments' ? areaParam : 'all'
+  const setArea = (next: AreaFilter) => setParams(next === 'all' ? {} : { area: next }, { replace: true })
   const [dialog, setDialog] = useState<{ open: boolean; task?: Task; column?: TaskColumn }>({ open: false })
 
   const visible =
@@ -212,6 +216,7 @@ export function YogaKanban() {
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         task={dialog.task}
         defaultColumn={dialog.column}
+        defaultArea={area === 'all' ? undefined : area}
       />
     </div>
   )
@@ -231,7 +236,7 @@ function Column({ id, title, hint, tasks, emptyLabel, onOpen, onAdd }: ColumnPro
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
-    <div className="flex min-h-[18rem] flex-col rounded-2xl border border-brand-100 bg-white">
+    <div className="flex min-h-[12rem] flex-col rounded-2xl border border-brand-100 bg-white">
       <div className="flex items-start justify-between gap-2 px-3 pt-3 pb-2">
         <div>
           <div className="flex items-center gap-2">
@@ -260,7 +265,7 @@ function Column({ id, title, hint, tasks, emptyLabel, onOpen, onAdd }: ColumnPro
             <SortableTask key={task.id} task={task} onOpen={() => onOpen(task)} />
           ))}
           {tasks.length === 0 && (
-            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-stone-200 px-3 py-6 text-center text-xs text-stone-400">
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-stone-300 px-3 py-6 text-center text-xs text-stone-500">
               {emptyLabel}
             </div>
           )}

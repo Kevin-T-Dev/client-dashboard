@@ -12,6 +12,7 @@ import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { SignInPage } from '@/pages/auth/SignInPage'
+import { TasksPage } from '@/pages/tasks/TasksPage'
 import { LessonPlans } from '@/pages/yoga/LessonPlans'
 import { YogaPage } from '@/pages/yoga/YogaPage'
 import { YogaSchedule } from '@/pages/yoga/YogaSchedule'
@@ -29,11 +30,12 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route index element={<DashboardPage />} />
-                <Route path="board" element={<Navigate to="/" replace />} />
+                <Route path="tasks" element={<TasksPage />} />
+                <Route path="board" element={<Navigate to="/tasks" replace />} />
                 <Route path="yoga" element={<YogaPage />}>
                   <Route index element={<Navigate to="schedule" replace />} />
                   <Route path="schedule" element={<YogaSchedule />} />
-                  <Route path="kanban" element={<Navigate to="/" replace />} />
+                  <Route path="kanban" element={<Navigate to="/tasks?area=yoga" replace />} />
                   <Route path="plans" element={<LessonPlans />} />
                 </Route>
                 <Route path="appointments" element={<AppointmentsPage />}>

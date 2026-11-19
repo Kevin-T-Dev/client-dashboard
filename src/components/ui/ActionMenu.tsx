@@ -27,7 +27,7 @@ export function ActionMenu({ items, label, className }: ActionMenuProps) {
       <Menu.Trigger
         aria-label={name}
         className={cn(
-          'flex size-8 shrink-0 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-800 focus-visible:outline-2 focus-visible:outline-brand-500 data-popup-open:bg-stone-100',
+          'flex size-10 shrink-0 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 sm:size-8 hover:text-stone-800 focus-visible:outline-2 focus-visible:outline-brand-500 data-popup-open:bg-stone-100',
           className,
         )}
       >
