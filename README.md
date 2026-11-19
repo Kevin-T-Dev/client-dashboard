@@ -14,7 +14,7 @@ One place to check instead of hopping between WhatsApp, Telegram and notes.
 | **Appointments → Schedule** | Month calendar of treatments (facial, hair, nails, massage…), provider, notes, and package link. **Marking an appointment done deducts one session from its package.** |
 | **Appointments → Package Counter** | Every package you have signed: store, name, total price, price per session, sessions used / left (progress bar), signed and expiry dates, notes. Status is derived: Active, Expiring soon (≤30 days), Fully used, Expired. "Use 1 session" and "Undo last session" keep the count honest. |
 
-Everything is full CRUD and persists locally. Sample data is seeded on first run and can be restored with **Reset sample data** in the sidebar.
+The dashboard supports creating, viewing, editing, and deleting records. In offline demo mode, sample data is seeded on first run and can be restored with **Reset sample data** in the sidebar.
 
 ## Tech stack
 
@@ -49,11 +49,11 @@ npm run preview   # serve the production build
 
 With Supabase configured, the app opens with a **sign-in page** (`/sign-in`) and a **register page** (`/register`: name, email, password). Without Supabase the pages are skipped and the offline sample-data mode works as before.
 
-Registering creates a Supabase Auth user and, through a database trigger, a row in `public.profiles` with `approved = false`. A signed-in but unapproved user sees a "Waiting for approval" screen and cannot read or write any data. Row Level Security on every dashboard table and on the `media` storage bucket allows only approved, signed-in users; anonymous access is gone.
+Registering creates a Supabase Auth user and, through a database trigger, a row in `public.profiles` with `approved = false`. A signed-in but unapproved user sees a "Waiting for approval" screen and cannot read or write any data. The checked-in policies give all approved accounts full access to the same workspace. Approve only accounts trusted to read and change all dashboard data. Confirm the existing `media` bucket is private and inspect its effective Storage policies before sharing the app.
 
 **One-time setup in Supabase**
 
-1. SQL editor: run `supabase/migrations/20261116170000_auth_profiles_rls.sql`. It is safe to re-run.
+1. For a new Supabase project, apply the files in `supabase/migrations` in timestamp order: initial schema, location columns, then auth and RLS. For an existing project, compare its schema and migration history with these files before applying anything. The initial schema creates missing tables and cannot reconcile different existing definitions.
 2. Authentication → Sign In / Providers → Email: turn **Confirm email off**. Supabase's built-in mailer only delivers to members of your Supabase organisation (and 2 emails per hour), so the client would never receive a confirmation link. Keep it on only if you add custom SMTP.
 3. Authentication → URL Configuration: set **Site URL** to the Render URL and add `http://localhost:5173/**` to the redirect list.
 4. Password reset: the sign-in page links to **Forgot password?** (`/forgot-password`), which emails a link to `/reset-password` where the user picks a new password. That page must be an allowed redirect, so also add `https://<your-render-url>/**` to the redirect list (the `localhost` entry covers local testing). Reset emails go through the same mailer as confirmations, so they only reach real clients once **custom SMTP** is set up (Authentication → Emails → SMTP Settings). The email text can be edited under Authentication → Emails → Reset Password.
@@ -63,7 +63,7 @@ Registering creates a Supabase Auth user and, through a database trigger, a row 
 **Approving someone** after they register (SQL editor):
 
 ```sql
-update public.profiles set approved = true where email = 'kelly@example.com';
+update public.profiles set approved = true where id = '<verified-auth-user-uuid>';
 ```
 
 The sidebar shows who is signed in and has a **Sign out** button; signing out also clears the on-device cache.
@@ -73,11 +73,13 @@ The sidebar shows who is signed in and has a **Sign out** button; signing out al
 The app is a static Vite build that talks to Supabase from the browser, so it runs as a Render **Static Site**. `render.yaml` describes the service and `.node-version` pins the Node version Render builds with.
 
 1. Push the repository to GitHub.
-2. In Render choose **New → Blueprint** and pick the repository. Render reads `render.yaml`.
+2. For a new site, in Render choose **New → Blueprint** and pick the repository. Render reads `render.yaml`.
 3. Render asks for two values. Both come from the Supabase dashboard:
    - `VITE_SUPABASE_URL`: Project Settings → Data API → Project URL
    - `VITE_SUPABASE_PUBLISHABLE_KEY`: Project Settings → API Keys → Publishable key
 4. Click **Apply**. Render runs `npm ci && npm run build` and serves `dist/`. Every push to `main` redeploys.
+
+For an existing Render site, keep its current service and URL. Review the blueprint service name before syncing it.
 
 The `VITE_` values are baked into the bundle at build time. Render redeploys on its own when you change an environment variable, so the new values take effect after that build.
 

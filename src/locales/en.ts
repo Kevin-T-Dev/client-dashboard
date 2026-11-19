@@ -496,7 +496,7 @@ export const en = {
     registerTitle: 'Create your account',
     registerSubtitle: 'Register once, then sign in with your email and password.',
     name: 'Your name',
-    namePlaceholder: 'Kelly',
+    namePlaceholder: 'Your name',
     email: 'Email',
     emailPlaceholder: 'you@example.com',
     password: 'Password',
