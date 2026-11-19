@@ -79,6 +79,7 @@ export function YogaSchedule() {
     tone: s.status === 'cancelled' ? 'muted' : 'brand',
     badges: (
       <>
+        {s.role === 'attending' && <Badge tone="info">{t('role.attending')}</Badge>}
         {s.status === 'done' && <Badge tone="success">{t('sessionStatus.done')}</Badge>}
         {s.status === 'cancelled' && <Badge tone="neutral">{t('sessionStatus.cancelled')}</Badge>}
         {s.lessonPlanId && planTitle.get(s.lessonPlanId) && (
@@ -114,7 +115,7 @@ export function YogaSchedule() {
             <span className="size-2.5 rounded-full bg-stone-400" /> {t('yoga.cancelled')}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-amber-500" /> {t('column.todo')}
+            <span className="size-2.5 rounded-full bg-amber-500" /> {t('task.legend')}
           </span>
         </div>
         <Button leadingIcon={<Plus size={16} />} onClick={() => setDialog({ open: true, day: selectedDay })}>
@@ -122,7 +123,7 @@ export function YogaSchedule() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Card>
           <CardBody className="pt-5">
             <MonthCalendar
@@ -140,11 +141,14 @@ export function YogaSchedule() {
           <Card>
             <CardHeader
               title={fmtDayLabel(selectedDay)}
-              description={
+              description={[
                 daySessions.length === 1
                   ? t('yoga.sessionCount', { n: daySessions.length })
-                  : t('yoga.sessionCount_other', { n: daySessions.length })
-              }
+                  : t('yoga.sessionCount_other', { n: daySessions.length }),
+                dayTasks.length === 1
+                  ? t('task.count', { n: dayTasks.length })
+                  : t('task.count_other', { n: dayTasks.length }),
+              ].join(' · ')}
               actions={
                 <div className="flex gap-1">
                   <Button

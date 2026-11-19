@@ -46,6 +46,8 @@ body {
     radial-gradient(900px 420px at 8% -10%, #ffe4f1 0%, transparent 60%),
     radial-gradient(700px 380px at 100% 0%, #ffd0e6 0%, transparent 52%),
     radial-gradient(520px 320px at 70% 110%, #fff0f6 0%, transparent 70%);
+  /* Paint the glow once at the top. Repeating it tiles a visible seam every screen height on long pages. */
+  background-repeat: no-repeat;
   color: var(--color-stone-900);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

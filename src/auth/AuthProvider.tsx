@@ -30,6 +30,8 @@ export interface AuthContextValue {
   approval: Approval
   /** `MISSING_PROFILES` or the message of the last failed approval check. */
   approvalError: string | null
+  /** `profiles.full_name` for the signed-in user, or null until it has loaded. */
+  profileName: string | null
   refreshApproval: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signUp: (name: string, email: string, password: string) => Promise<SignUpResult>
@@ -49,20 +51,28 @@ export const MISSING_PROFILES = 'missing-profiles'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-async function fetchApproval(userId: string): Promise<{ approval: Approval; error: string | null }> {
+interface ProfileResult {
+  approval: Approval
+  error: string | null
+  fullName: string | null
+}
+
+/** Reads the user's profile row: the approval flag and the name to show. */
+async function fetchProfile(userId: string): Promise<ProfileResult> {
   const { data, error } = await getSupabase()
     .from('profiles')
-    .select('approved')
+    .select('approved, full_name')
     .eq('id', userId)
     .maybeSingle()
   if (error) {
     if (error.code === 'PGRST205' || error.message.includes('schema cache')) {
-      return { approval: 'error', error: MISSING_PROFILES }
+      return { approval: 'error', error: MISSING_PROFILES, fullName: null }
     }
-    return { approval: 'error', error: error.message }
+    return { approval: 'error', error: error.message, fullName: null }
   }
-  const approved = Boolean((data as { approved?: boolean } | null)?.approved)
-  return { approval: approved ? 'approved' : 'pending', error: null }
+  const row = data as { approved?: boolean; full_name?: string | null } | null
+  const approved = Boolean(row?.approved)
+  return { approval: approved ? 'approved' : 'pending', error: null, fullName: row?.full_name?.trim() || null }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -71,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [approval, setApproval] = useState<Approval>('checking')
   const [approvalError, setApprovalError] = useState<string | null>(null)
+  const [profileName, setProfileName] = useState<string | null>(null)
   const userId = session?.user.id ?? null
 
   useEffect(() => {
@@ -99,10 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true
     setApproval('checking')
     setApprovalError(null)
-    void fetchApproval(userId).then((result) => {
+    void fetchProfile(userId).then((result) => {
       if (!active) return
       setApproval(result.approval)
       setApprovalError(result.error)
+      setProfileName(result.fullName)
     })
     return () => {
       active = false
@@ -111,9 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshApproval = useCallback(async () => {
     if (!userId) return
-    const result = await fetchApproval(userId)
+    const result = await fetchProfile(userId)
     setApproval(result.approval)
     setApprovalError(result.error)
+    setProfileName(result.fullName)
   }, [userId])
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -179,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       approval,
       approvalError,
+      profileName,
       refreshApproval,
       signIn,
       signUp,
@@ -193,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       approval,
       approvalError,
+      profileName,
       refreshApproval,
       signIn,
       signUp,
@@ -212,9 +227,13 @@ export function useAuth(): AuthContextValue {
   return ctx
 }
 
-/** The name given at registration, falling back to the email address. */
-export function displayName(user: User | null): string {
+/**
+ * The signed-in user's name: `profiles.full_name` from the database, then the name given at
+ * registration while the profile loads. Empty when neither is set; callers pick their own fallback.
+ */
+export function useUserName(): string {
+  const { user, profileName } = useAuth()
+  if (profileName) return profileName
   const meta = user?.user_metadata as { full_name?: unknown } | undefined
-  const name = typeof meta?.full_name === 'string' ? meta.full_name.trim() : ''
-  return name || user?.email || ''
+  return typeof meta?.full_name === 'string' ? meta.full_name.trim() : ''
 }

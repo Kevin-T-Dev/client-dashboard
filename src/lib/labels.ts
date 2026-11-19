@@ -5,6 +5,7 @@ import type {
   AppointmentStatus,
   PlanLevel,
   SessionKind,
+  SessionRole,
   SessionStatus,
   TaskArea,
   TaskColumn,
@@ -19,6 +20,10 @@ const KIND_KEY: Record<SessionKind, string> = {
   'group-class': 'kind.group',
   workshop: 'kind.workshop',
   'self-practice': 'kind.self',
+}
+const ROLE_KEY: Record<SessionRole, string> = {
+  teaching: 'role.teaching',
+  attending: 'role.attending',
 }
 const SESSION_STATUS_KEY: Record<SessionStatus, string> = {
   planned: 'sessionStatus.planned',
@@ -99,6 +104,7 @@ export function useAppLabels() {
   return {
     sessionKinds,
     sessionKindLabel: dictionary(sessionKinds),
+    sessionRoles: items(ROLE_KEY, t),
     sessionStatuses: items(SESSION_STATUS_KEY, t),
     categories,
     categoryLabel: dictionary(categories),

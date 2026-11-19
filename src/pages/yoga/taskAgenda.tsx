@@ -76,6 +76,7 @@ export function useTaskAgendaItem(onOpen: (task: Task) => void) {
       start,
       end: start,
       allDay: true,
+      allDayLabel: labels.columnTitle[task.column],
       title: task.title,
       subtitle: task.description,
       tone: done ? 'muted' : 'task',
@@ -86,8 +87,6 @@ export function useTaskAgendaItem(onOpen: (task: Task) => void) {
               {labels.taskAreas.find((item) => item.value === area)?.label}
             </Badge>
           )}
-          {task.column === 'doing' && <Badge tone="info">{labels.columnTitle.doing}</Badge>}
-          {done && <Badge tone="success">{labels.columnTitle.done}</Badge>}
           {!done && task.priority !== 'low' && (
             <Badge tone={priorityTone[task.priority]}>
               {labels.taskPriorities.find((item) => item.value === task.priority)?.label}

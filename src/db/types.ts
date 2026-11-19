@@ -13,10 +13,14 @@ export interface Stamped {
 
 export type SessionKind = 'one-on-one' | 'group-class' | 'workshop' | 'self-practice'
 export type SessionStatus = 'planned' | 'done' | 'cancelled'
+/** Whether Kelly teaches the session or attends it as a student. */
+export type SessionRole = 'teaching' | 'attending'
 
 export interface YogaSession extends Stamped {
   title: string
   kind: SessionKind
+  /** Missing on rows saved before roles existed; those are teaching. */
+  role?: SessionRole
   /** ISO date-time */
   start: string
   /** ISO date-time */

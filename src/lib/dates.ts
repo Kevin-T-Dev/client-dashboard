@@ -43,6 +43,11 @@ export function fmtDate(d: Date | string, withYear = false): string {
   return format(date, pattern, { locale: dateLocale() })
 }
 
+/** Full date with weekday, e.g. "Thursday, 19 November 2026". */
+export function fmtLongDate(d: Date): string {
+  return format(d, isZh() ? 'yyyy年M月d日 EEEE' : 'EEEE, d MMMM yyyy', { locale: dateLocale() })
+}
+
 export function fmtMonth(d: Date): string {
   return format(d, isZh() ? 'yyyy年M月' : 'MMMM yyyy', { locale: dateLocale() })
 }

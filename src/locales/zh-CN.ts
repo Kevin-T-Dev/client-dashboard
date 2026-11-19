@@ -1,8 +1,13 @@
 import type { en } from './en'
 
 export const zh: typeof en = {
+  brand: {
+    title: '我的主页',
+    named: '{{name}}的主页',
+  },
   nav: {
     dashboard: '首页',
+    tasks: '任务',
     yoga: '瑜伽',
     appointments: '预约',
   },
@@ -69,6 +74,10 @@ export const zh: typeof en = {
     workshop: '工作坊',
     self: '自我练习',
   },
+  role: {
+    teaching: '授课',
+    attending: '上课',
+  },
   sessionStatus: {
     planned: '已计划',
     done: '已完成',
@@ -134,9 +143,31 @@ export const zh: typeof en = {
     reset: '恢复',
     restored: '已恢复示例数据',
   },
+  tasksPage: {
+    title: '任务',
+    description: '瑜伽和预约的所有待办。拖动卡片即可更新进度。',
+  },
+  overview: {
+    title: '概览',
+    overdue: '已逾期',
+    viewAll: '查看全部',
+    upcoming: '即将到来',
+    packages: '可用套餐',
+    sessionsLeft: '剩余次数',
+    openTasks: '未完成任务',
+    next: '下一个：{{when}}',
+    nothingNext: '暂无安排',
+    nextDue: '下一个截止：{{when}} · {{title}}',
+    nothingDue: '暂无截止日期',
+  },
   dashboard: {
+    morning: '早上好',
+    afternoon: '下午好',
+    evening: '晚上好',
+    greetingName: '{{greeting}}，{{name}}',
+    intro: '这是你接下来的安排。',
     upcoming: '本周安排',
-    upcomingHint: '未来 7 天的瑜伽课、预约和待办',
+    upcomingHint: '未来 7 天的瑜伽课、预约和任务',
     empty: '添加课程或预约后，会显示在这里。',
     none: '未来 7 天没有安排。',
     yoga: '瑜伽',
@@ -178,6 +209,8 @@ export const zh: typeof en = {
     intro: '安排一对一、你教的团体课，或你报名参加的课。',
     titlePh: '例如：与美琳的一对一',
     type: '类型',
+    role: '我的角色',
+    roleHint: '“上课”表示你以学员身份参加这节课。',
     student: '学员',
     studentHint: '关联学员，方便记录一对一课程。',
     noStudent: '不关联学员',
@@ -195,6 +228,9 @@ export const zh: typeof en = {
     titleWith: '与{{name}}的一对一',
   },
   task: {
+    legend: '任务',
+    count: '{{n}} 个任务',
+    count_other: '{{n}} 个任务',
     edit: '编辑任务',
     new: '新任务',
     add: '添加任务',

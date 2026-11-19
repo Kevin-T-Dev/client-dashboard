@@ -140,7 +140,7 @@ export function AppointmentSchedule() {
             <span className="size-2.5 rounded-full bg-stone-400" /> {t('appointments.cancelled')}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-amber-500" /> {t('column.todo')}
+            <span className="size-2.5 rounded-full bg-amber-500" /> {t('task.legend')}
           </span>
         </div>
         <Button
@@ -152,7 +152,7 @@ export function AppointmentSchedule() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Card>
           <CardBody className="pt-5">
             <MonthCalendar
@@ -170,11 +170,14 @@ export function AppointmentSchedule() {
           <Card>
             <CardHeader
               title={fmtDayLabel(selectedDay)}
-              description={
+              description={[
                 dayItems.length === 1
                   ? t('appointments.count', { n: dayItems.length })
-                  : t('appointments.count_other', { n: dayItems.length })
-              }
+                  : t('appointments.count_other', { n: dayItems.length }),
+                dayTasks.length === 1
+                  ? t('task.count', { n: dayTasks.length })
+                  : t('task.count_other', { n: dayTasks.length }),
+              ].join(' · ')}
               actions={
                 <div className="flex gap-1">
                   <Button

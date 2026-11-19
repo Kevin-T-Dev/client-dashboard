@@ -12,6 +12,8 @@ export interface AgendaItem {
   tone: 'brand' | 'accent' | 'muted' | 'task'
   /** Shown without a time, e.g. a to-do due that day. */
   allDay?: boolean
+  /** Label shown in the time column for all-day rows, e.g. a task's status. */
+  allDayLabel?: ReactNode
   badges?: ReactNode
   actions?: ReactNode
   onClick?: () => void
@@ -41,14 +43,14 @@ export function AgendaRow({ item }: { item: AgendaItem }) {
         type={item.onClick ? 'button' : undefined}
         onClick={item.onClick}
         className={cn(
-          'flex min-w-0 flex-1 items-start gap-3 rounded-lg px-2 py-2 text-left',
+          'flex min-w-0 flex-1 items-start gap-2.5 rounded-lg px-1.5 py-2 text-left sm:gap-3 sm:px-2',
           item.onClick && 'hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-brand-500',
         )}
       >
         <span className={cn('mt-1 h-10 w-1 shrink-0 rounded-full', bar[item.tone])} />
-        <span className="w-[4.5rem] shrink-0 pt-0.5 text-xs leading-5 text-stone-500 tabular-nums">
+        <span className="w-16 shrink-0 whitespace-nowrap sm:w-[4.5rem] pt-0.5 text-xs leading-5 text-stone-500 tabular-nums">
           {item.allDay ? (
-            <span className="block font-medium text-amber-700">{t('column.todo')}</span>
+            <span className="block font-medium whitespace-normal text-amber-700">{item.allDayLabel ?? t('column.todo')}</span>
           ) : (
             <>
               <span className="block font-medium text-stone-800">{fmtTime(item.start)}</span>

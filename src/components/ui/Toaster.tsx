@@ -58,7 +58,7 @@ function ToastList() {
 export function Toaster() {
   return (
     <Toast.Portal>
-      <Toast.Viewport className="fixed right-4 bottom-4 z-50 flex w-[22rem] max-w-[calc(100vw-2rem)] flex-col gap-2">
+      <Toast.Viewport className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 md:bottom-4 flex w-[22rem] max-w-[calc(100vw-2rem)] flex-col gap-2">
         <ToastList />
       </Toast.Viewport>
     </Toast.Portal>

@@ -7,7 +7,7 @@ import { FormField, TextArea, TextInput } from '@/components/ui/Field'
 import { AppSelect } from '@/components/ui/Select'
 import { notify } from '@/components/ui/Toaster'
 import { sessionsApi } from '@/db/api'
-import type { LessonPlan, SessionKind, SessionStatus, Student, YogaSession } from '@/db/types'
+import type { LessonPlan, SessionKind, SessionRole, SessionStatus, Student, YogaSession } from '@/db/types'
 import { buildRange, splitRange } from '@/lib/dates'
 import { useAppLabels } from '@/lib/labels'
 
@@ -52,6 +52,8 @@ function SessionForm({ onOpenChange, session, defaultDay, students, plans, onDel
   const initial = session ? splitRange(session.start, session.end) : { dateKey: defaultDay, time: '09:00', durationMinutes: 60 }
   const [title, setTitle] = useState(session?.title ?? '')
   const [kind, setKind] = useState<SessionKind>(session?.kind ?? 'one-on-one')
+  const [role, setRole] = useState<SessionRole>(session?.role ?? 'teaching')
+  const teaching = role === 'teaching'
   const [status, setStatus] = useState<SessionStatus>(session?.status ?? 'planned')
   const [dateKey, setDateKey] = useState(initial.dateKey)
   const [time, setTime] = useState(initial.time)
@@ -89,7 +91,7 @@ function SessionForm({ onOpenChange, session, defaultDay, students, plans, onDel
   function pickStudent(id: string) {
     setStudentId(id)
     const name = students.find((s) => s.id === id)?.name
-    if (name && kind === 'one-on-one' && !title.trim()) setTitle(t('session.titleWith', { name }))
+    if (name && teaching && kind === 'one-on-one' && !title.trim()) setTitle(t('session.titleWith', { name }))
   }
 
   async function save() {
@@ -106,10 +108,12 @@ function SessionForm({ onOpenChange, session, defaultDay, students, plans, onDel
       const data = {
         title: title.trim(),
         kind,
+        role,
         status,
         ...range,
-        studentId: studentId === NONE ? undefined : studentId,
-        lessonPlanId: planId === NONE ? undefined : planId,
+        // Students and lesson plans belong to classes Kelly teaches.
+        studentId: !teaching || studentId === NONE ? undefined : studentId,
+        lessonPlanId: !teaching || planId === NONE ? undefined : planId,
         location: location.trim() || undefined,
         notes: notes.trim() || undefined,
       }
@@ -139,6 +143,9 @@ function SessionForm({ onOpenChange, session, defaultDay, students, plans, onDel
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label={t('session.role')} hint={teaching ? undefined : t('session.roleHint')}>
+          <AppSelect value={role} onValueChange={setRole} items={labels.sessionRoles} />
+        </FormField>
         <FormField label={t('session.type')}>
           <AppSelect value={kind} onValueChange={setKind} items={labels.sessionKinds} />
         </FormField>
@@ -166,12 +173,16 @@ function SessionForm({ onOpenChange, session, defaultDay, students, plans, onDel
             </div>
           )}
         </FormField>
-        <FormField label={t('session.student')} hint={t('session.studentHint')}>
-          <AppSelect value={studentId} onValueChange={pickStudent} items={studentItems} />
-        </FormField>
-        <FormField label={t('session.plan')}>
-          <AppSelect value={planId} onValueChange={setPlanId} items={planItems} />
-        </FormField>
+        {teaching && (
+          <>
+            <FormField label={t('session.student')} hint={t('session.studentHint')}>
+              <AppSelect value={studentId} onValueChange={pickStudent} items={studentItems} />
+            </FormField>
+            <FormField label={t('session.plan')}>
+              <AppSelect value={planId} onValueChange={setPlanId} items={planItems} />
+            </FormField>
+          </>
+        )}
         <FormField label={t('common.location')}>
           <TextInput value={location} onValueChange={setLocation} placeholder={t('session.locationPh')} />
         </FormField>

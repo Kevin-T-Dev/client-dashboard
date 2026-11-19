@@ -192,6 +192,13 @@ async function writeSeedData(): Promise<void> {
       location: 'Home studio',
       status: 'planned',
     }),
+    session(2, '19:30', 60, {
+      title: 'Hatha with Teacher Anna',
+      kind: 'group-class',
+      role: 'attending',
+      location: 'Pelangi Yoga',
+      status: 'planned',
+    }),
     session(3, '19:00', 60, {
       title: 'Yin & Restore',
       kind: 'group-class',
