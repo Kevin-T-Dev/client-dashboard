@@ -12,7 +12,8 @@ export interface Stamped {
 /* ------------------------------------------------------------------ */
 
 export type SessionKind = 'one-on-one' | 'group-class' | 'workshop' | 'self-practice'
-export type SessionStatus = 'planned' | 'done' | 'cancelled'
+/** `tbc`: pencilled in, still waiting on a time or confirmation. */
+export type SessionStatus = 'planned' | 'tbc' | 'done' | 'cancelled'
 /** Whether Kelly teaches the session or attends it as a student. */
 export type SessionRole = 'teaching' | 'attending'
 
@@ -88,7 +89,8 @@ export type AppointmentCategory =
   | 'body'
   | 'medical'
   | 'other'
-export type AppointmentStatus = 'upcoming' | 'done' | 'cancelled'
+/** `tbc`: pencilled in, still waiting on the shop to confirm. */
+export type AppointmentStatus = 'upcoming' | 'tbc' | 'done' | 'cancelled'
 
 export interface Appointment extends Stamped {
   title: string

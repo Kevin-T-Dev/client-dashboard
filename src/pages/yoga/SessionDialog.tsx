@@ -183,7 +183,7 @@ function SessionForm({ onOpenChange, session, defaultDay, students, plans, onDel
             </FormField>
           </>
         )}
-        <FormField label={t('common.location')}>
+        <FormField label={t('common.location')} className="sm:col-span-2">
           <TextInput value={location} onValueChange={setLocation} placeholder={t('session.locationPh')} />
         </FormField>
       </div>

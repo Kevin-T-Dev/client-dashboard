@@ -163,13 +163,13 @@ export function Overview() {
     .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))[0]
 
   const upcomingSessions = sessions
-    .filter((s) => s.status === 'planned' && new Date(s.end) >= now)
+    .filter((s) => (s.status === 'planned' || s.status === 'tbc') && new Date(s.end) >= now)
     .sort((a, b) => a.start.localeCompare(b.start))
   const attending = upcomingSessions.filter((s) => s.role === 'attending').length
   const nextSession = upcomingSessions[0]
 
   const upcomingAppointments = appointments
-    .filter((a) => a.status === 'upcoming' && new Date(a.end) >= now)
+    .filter((a) => (a.status === 'upcoming' || a.status === 'tbc') && new Date(a.end) >= now)
     .sort((a, b) => a.start.localeCompare(b.start))
   // Packages that can still be booked: sessions left and not past their expiry date.
   const usablePackages = packages.filter((p) => ['active', 'expiring'].includes(packageStatus(p, today)))
@@ -265,9 +265,6 @@ export function Overview() {
         onOpenChange={setAppointmentOpen}
         defaultDay={todayKey()}
         packages={packages}
-        knownProviders={[
-          ...new Set([...appointments.map((a) => a.provider), ...packages.map((p) => p.provider)]),
-        ].sort()}
       />
     </section>
   )

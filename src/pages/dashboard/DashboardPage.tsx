@@ -50,6 +50,7 @@ export function DashboardPage() {
           <>
             <Badge tone="brand">{t('dashboard.yoga')}</Badge>
             {s.role === 'attending' && <Badge tone="info">{t('role.attending')}</Badge>}
+            {s.status === 'tbc' && <Badge tone="pending">{t('sessionStatus.tbc')}</Badge>}
           </>
         ),
       })
@@ -64,7 +65,12 @@ export function DashboardPage() {
         title: a.title,
         subtitle: [a.provider, a.location, labels.categoryLabel[a.category]].filter(Boolean).join(' · '),
         tone: a.status === 'done' ? 'muted' : 'accent',
-        badges: <Badge tone="accent">{t('dashboard.appointment')}</Badge>,
+        badges: (
+          <>
+            <Badge tone="accent">{t('dashboard.appointment')}</Badge>
+            {a.status === 'tbc' && <Badge tone="pending">{t('appointmentStatus.tbc')}</Badge>}
+          </>
+        ),
       })
     }
     // Open to-dos due this week. Overdue ones are listed under today so they stay in view.

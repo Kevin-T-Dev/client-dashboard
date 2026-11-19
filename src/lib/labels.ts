@@ -27,6 +27,7 @@ const ROLE_KEY: Record<SessionRole, string> = {
 }
 const SESSION_STATUS_KEY: Record<SessionStatus, string> = {
   planned: 'sessionStatus.planned',
+  tbc: 'sessionStatus.tbc',
   done: 'sessionStatus.done',
   cancelled: 'sessionStatus.cancelled',
 }
@@ -41,6 +42,7 @@ const CATEGORY_KEY: Record<AppointmentCategory, string> = {
 }
 const APPOINTMENT_STATUS_KEY: Record<AppointmentStatus, string> = {
   upcoming: 'appointmentStatus.upcoming',
+  tbc: 'appointmentStatus.tbc',
   done: 'appointmentStatus.done',
   cancelled: 'appointmentStatus.cancelled',
 }

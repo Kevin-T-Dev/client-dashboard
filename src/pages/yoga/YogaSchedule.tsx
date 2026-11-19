@@ -1,6 +1,6 @@
 import { startOfMonth } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
+import { CalendarCheck, Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgendaList, type AgendaItem } from '@/components/calendar/AgendaList'
@@ -56,14 +56,20 @@ export function YogaSchedule() {
     .sort((a, b) => a.start.localeCompare(b.start))
   const dayTasks = tasks.filter((task) => task.dueDate === selectedDay)
   const upcoming = sessions
-    .filter((s) => s.status === 'planned' && new Date(s.end) >= now)
+    .filter((s) => (s.status === 'planned' || s.status === 'tbc') && new Date(s.end) >= now)
     .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, 6)
 
   async function setStatus(s: YogaSession, status: YogaSession['status']) {
     await sessionsApi.update(s.id, { status })
     notify(
-      status === 'done' ? t('yoga.markedDone') : status === 'cancelled' ? t('yoga.cancelledToast') : t('yoga.restored'),
+      status === 'done'
+        ? t('yoga.markedDone')
+        : status === 'cancelled'
+          ? t('yoga.cancelledToast')
+          : status === 'planned' && s.status === 'tbc'
+            ? t('yoga.confirmed')
+            : t('yoga.restored'),
       s.title,
     )
   }
@@ -80,6 +86,7 @@ export function YogaSchedule() {
     badges: (
       <>
         {s.role === 'attending' && <Badge tone="info">{t('role.attending')}</Badge>}
+        {s.status === 'tbc' && <Badge tone="pending">{t('sessionStatus.tbc')}</Badge>}
         {s.status === 'done' && <Badge tone="success">{t('sessionStatus.done')}</Badge>}
         {s.status === 'cancelled' && <Badge tone="neutral">{t('sessionStatus.cancelled')}</Badge>}
         {s.lessonPlanId && planTitle.get(s.lessonPlanId) && (
@@ -92,6 +99,9 @@ export function YogaSchedule() {
       <ActionMenu
         items={[
           { label: t('common.edit'), icon: <Pencil size={14} />, onClick: () => setDialog({ open: true, session: s }) },
+          ...(s.status === 'tbc'
+            ? [{ label: t('yoga.markConfirmed'), icon: <CalendarCheck size={14} />, onClick: () => void setStatus(s, 'planned') }]
+            : []),
           s.status === 'done'
             ? { label: t('yoga.markPlanned'), icon: <Check size={14} />, onClick: () => void setStatus(s, 'planned') }
             : { label: t('yoga.markDone'), icon: <Check size={14} />, onClick: () => void setStatus(s, 'done') },

@@ -1,6 +1,6 @@
 import { startOfMonth } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
+import { CalendarCheck, Check, ListTodo, Pencil, Plus, Trash, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgendaList, type AgendaItem } from '@/components/calendar/AgendaList'
@@ -54,7 +54,7 @@ export function AppointmentSchedule() {
     .sort((a, b) => a.start.localeCompare(b.start))
   const dayTasks = tasks.filter((task) => task.dueDate === selectedDay)
   const upcoming = appointments
-    .filter((a) => a.status === 'upcoming' && new Date(a.end) >= now)
+    .filter((a) => (a.status === 'upcoming' || a.status === 'tbc') && new Date(a.end) >= now)
     .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, 6)
 
@@ -86,6 +86,11 @@ export function AppointmentSchedule() {
     notify(t('appointments.back'), a.title)
   }
 
+  async function confirm(a: Appointment) {
+    await appointmentsApi.update(a.id, { status: 'upcoming' })
+    notify(t('appointments.confirmed'), a.title)
+  }
+
   async function cancel(a: Appointment) {
     await appointmentsApi.update(a.id, { status: 'cancelled' })
     notify(t('appointments.cancelledToast'), a.title)
@@ -102,6 +107,7 @@ export function AppointmentSchedule() {
       tone: a.status === 'cancelled' ? 'muted' : 'accent',
       badges: (
         <>
+          {a.status === 'tbc' && <Badge tone="pending">{t('appointmentStatus.tbc')}</Badge>}
           {a.status === 'done' && <Badge tone="success">{t('appointments.doneBadge')}</Badge>}
           {a.status === 'cancelled' && <Badge tone="neutral">{t('appointments.cancelledBadge')}</Badge>}
           {pkg && (
@@ -116,6 +122,9 @@ export function AppointmentSchedule() {
         <ActionMenu
           items={[
             { label: t('common.edit'), icon: <Pencil size={14} />, onClick: () => setDialog({ open: true, appointment: a }) },
+            ...(a.status === 'tbc'
+              ? [{ label: t('appointments.markConfirmed'), icon: <CalendarCheck size={14} />, onClick: () => void confirm(a) }]
+              : []),
             a.status === 'done'
               ? { label: t('appointments.markUpcoming'), icon: <Check size={14} />, onClick: () => void markUpcoming(a) }
               : { label: t('appointments.markDone'), icon: <Check size={14} />, onClick: () => void markDone(a) },
@@ -246,7 +255,6 @@ export function AppointmentSchedule() {
         appointment={dialog.appointment}
         defaultDay={dialog.day ?? selectedDay}
         packages={packages}
-        knownProviders={[...new Set([...appointments.map((a) => a.provider), ...packages.map((p) => p.provider)])].sort()}
         onDelete={(a) => {
           setDialog({ open: false })
           setDeleting(a)
