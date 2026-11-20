@@ -9,6 +9,14 @@ export const en = {
     yoga: 'Yoga',
     appointments: 'Appointments',
   },
+  timePicker: {
+    title: 'Select time',
+    enterTime: 'Enter time',
+    hour: 'Hour',
+    minute: 'Minute',
+    ok: 'OK',
+    placeholder: 'Pick a time',
+  },
   common: {
     cancel: 'Cancel',
     delete: 'Delete',
@@ -27,6 +35,8 @@ export const en = {
     moreActions: 'More actions',
     dismiss: 'Dismiss',
     select: 'Select…',
+    pickDate: 'Pick a date',
+    clearDate: 'Clear',
     tagPlaceholder: 'Type and press Enter…',
     removeTag: 'Remove {{tag}}',
     removeImage: 'Remove image',
@@ -142,6 +152,8 @@ export const en = {
     resetBody: 'This clears everything you have entered, including uploaded images, and restores the sample data.',
     reset: 'Reset',
     restored: 'Sample data restored',
+    collapse: 'Collapse sidebar',
+    expand: 'Expand sidebar',
   },
   tasksPage: {
     title: 'Tasks',

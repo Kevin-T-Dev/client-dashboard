@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { AppDialog } from '@/components/ui/Dialog'
 import { FormField, TextArea, TextInput } from '@/components/ui/Field'
+import { DatePicker } from '@/components/ui/DatePicker'
+import { TimePicker } from '@/components/ui/TimePicker'
 import { AppSelect } from '@/components/ui/Select'
 import { notify } from '@/components/ui/Toaster'
 import { appointmentsApi } from '@/db/api'
@@ -144,10 +146,10 @@ function AppointmentForm({
           <TextInput value={location} onValueChange={setLocation} placeholder={t('appointmentForm.locationPh')} />
         </FormField>
         <FormField label={t('common.date')}>
-          <TextInput type="date" value={dateKey} onValueChange={setDateKey} required />
+          <DatePicker value={dateKey} onValueChange={setDateKey} />
         </FormField>
         <FormField label={t('common.startTime')}>
-          <TextInput type="time" value={time} onValueChange={setTime} required />
+          <TimePicker value={time} onValueChange={setTime} />
         </FormField>
         <FormField label={t('common.duration')}>
           <AppSelect value={duration} onValueChange={setDuration} items={durationItems} tone="accent" />

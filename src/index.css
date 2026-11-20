@@ -85,3 +85,38 @@ input[type="datetime-local"] {
     animation: none;
   }
 }
+
+/* timepicker-ui: match the clock dialog to the app's brand palette. */
+.tp-ui-wrapper.tp-brand {
+  --tp-font-family: var(--font-sans);
+  --tp-bg: #ffffff;
+  --tp-surface: var(--color-stone-100);
+  --tp-surface-container: var(--color-stone-100);
+  --tp-surface-hover: var(--color-brand-100);
+  --tp-input-bg: var(--color-stone-100);
+  --tp-text: var(--color-stone-900);
+  --tp-text-secondary: var(--color-stone-500);
+  --tp-text-type-time: var(--color-stone-900);
+  --tp-text-icon: var(--color-stone-500);
+  --tp-on-surface: var(--color-stone-900);
+  --tp-on-surface-variant: var(--color-stone-500);
+  --tp-primary: var(--color-brand-600);
+  --tp-primary-rgb: 214, 61, 134;
+  --tp-on-primary: #ffffff;
+  --tp-primary-container: var(--color-brand-100);
+  --tp-on-primary-container: var(--color-brand-800);
+  --tp-tertiary-container: var(--color-brand-100);
+  --tp-on-tertiary-container: var(--color-brand-800);
+  --tp-am-pm-active: var(--color-brand-100);
+  --tp-am-pm-text-selected: var(--color-brand-800);
+  --tp-am-pm-text-unselected: var(--color-stone-500);
+  --tp-outline: var(--color-brand-600);
+  --tp-outline-variant: var(--color-stone-200);
+  --tp-border: var(--color-stone-300);
+  --tp-border-radius: 20px;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+.tp-ui-modal.show:has(.tp-brand) {
+  background-color: rgb(28 25 23 / 0.25);
+}

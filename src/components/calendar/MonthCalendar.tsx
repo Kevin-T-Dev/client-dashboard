@@ -17,7 +17,8 @@ import { cn } from '@/lib/cn'
 import { dateLocale, dayKey, fmtMonth, fmtTime, fmtWeekday } from '@/lib/dates'
 import { Button } from '../ui/Button'
 
-export type CalendarTone = 'brand' | 'accent' | 'muted' | 'task'
+/** `pending` marks items still waiting on confirmation (blue, like the pending badge). */
+export type CalendarTone = 'brand' | 'accent' | 'muted' | 'task' | 'pending'
 
 export interface CalendarEvent {
   id: string
@@ -46,6 +47,7 @@ const chipTone: Record<CalendarTone, string> = {
   accent: 'bg-accent-100 text-accent-900',
   muted: 'bg-stone-100 text-stone-500 line-through',
   task: 'bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200',
+  pending: 'bg-blue-100 text-blue-900 ring-1 ring-inset ring-blue-300',
 }
 
 const dotTone: Record<CalendarTone, string> = {
@@ -53,6 +55,7 @@ const dotTone: Record<CalendarTone, string> = {
   accent: 'bg-accent-500',
   muted: 'bg-stone-400',
   task: 'bg-amber-500',
+  pending: 'bg-blue-500',
 }
 
 export function MonthCalendar({

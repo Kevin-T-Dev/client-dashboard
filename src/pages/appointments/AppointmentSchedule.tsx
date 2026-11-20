@@ -43,7 +43,7 @@ export function AppointmentSchedule() {
       start: a.start,
       end: a.end,
       title: `${a.title} · ${a.provider}`,
-      tone: a.status === 'cancelled' ? ('muted' as const) : ('accent' as const),
+      tone: a.status === 'cancelled' ? ('muted' as const) : a.status === 'tbc' ? ('pending' as const) : ('accent' as const),
     })),
     ...tasks.map(taskToEvent),
   ]
@@ -104,7 +104,7 @@ export function AppointmentSchedule() {
       end: a.end,
       title: a.title,
       subtitle: [a.provider, a.location, labels.categoryLabel[a.category]].filter(Boolean).join(' · '),
-      tone: a.status === 'cancelled' ? 'muted' : 'accent',
+      tone: a.status === 'cancelled' ? 'muted' : a.status === 'tbc' ? 'pending' : 'accent',
       badges: (
         <>
           {a.status === 'tbc' && <Badge tone="pending">{t('appointmentStatus.tbc')}</Badge>}
@@ -147,6 +147,9 @@ export function AppointmentSchedule() {
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-stone-400" /> {t('appointments.cancelled')}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-blue-500" /> {t('appointmentStatus.tbc')}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-amber-500" /> {t('task.legend')}

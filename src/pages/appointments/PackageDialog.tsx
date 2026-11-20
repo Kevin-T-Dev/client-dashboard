@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { AppDialog } from '@/components/ui/Dialog'
 import { FormField, TextArea, TextInput } from '@/components/ui/Field'
+import { DatePicker } from '@/components/ui/DatePicker'
 import { AppSelect } from '@/components/ui/Select'
 import { notify } from '@/components/ui/Toaster'
 import { packagesApi } from '@/db/api'
@@ -130,10 +131,10 @@ function PackageForm({ onOpenChange, pkg, knownProviders }: PackageDialogProps) 
           <TextInput type="number" min={0} step={1} value={sessionsUsed} onValueChange={setSessionsUsed} />
         </FormField>
         <FormField label={t('packageForm.signed')}>
-          <TextInput type="date" value={purchasedAt} onValueChange={setPurchasedAt} required />
+          <DatePicker value={purchasedAt} onValueChange={setPurchasedAt} />
         </FormField>
         <FormField label={t('packageForm.expires')} hint={t('packageForm.expiresHint')}>
-          <TextInput type="date" value={expiresAt} onValueChange={setExpiresAt} />
+          <DatePicker value={expiresAt} onValueChange={setExpiresAt} clearable />
         </FormField>
       </div>
       <FormField label={t('common.notes')} hint={t('packageForm.notesHint')}>

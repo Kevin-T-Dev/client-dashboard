@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AppDialog } from '@/components/ui/Dialog'
 import { FormField, TextArea, TextInput } from '@/components/ui/Field'
+import { DatePicker } from '@/components/ui/DatePicker'
 import { AppSelect } from '@/components/ui/Select'
 import { notify } from '@/components/ui/Toaster'
 import { tasksApi } from '@/db/api'
@@ -103,7 +104,7 @@ function TaskForm({ onOpenChange, task, defaultColumn, defaultDueDate, defaultAr
           <AppSelect value={area} onValueChange={setArea} items={labels.taskAreas} />
         </FormField>
         <FormField label={t('task.due')}>
-          <TextInput type="date" value={dueDate} onValueChange={setDueDate} />
+          <DatePicker value={dueDate} onValueChange={setDueDate} clearable />
         </FormField>
       </div>
 

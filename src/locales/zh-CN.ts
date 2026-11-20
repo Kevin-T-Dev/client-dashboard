@@ -11,6 +11,14 @@ export const zh: typeof en = {
     yoga: '瑜伽',
     appointments: '预约',
   },
+  timePicker: {
+    title: '选择时间',
+    enterTime: '输入时间',
+    hour: '时',
+    minute: '分',
+    ok: '确定',
+    placeholder: '选择时间',
+  },
   common: {
     cancel: '取消',
     delete: '删除',
@@ -29,6 +37,8 @@ export const zh: typeof en = {
     moreActions: '更多操作',
     dismiss: '关闭通知',
     select: '请选择…',
+    pickDate: '选择日期',
+    clearDate: '清除',
     tagPlaceholder: '输入后按回车…',
     removeTag: '移除 {{tag}}',
     removeImage: '移除图片',
@@ -144,6 +154,8 @@ export const zh: typeof en = {
     resetBody: '这会清除你输入的所有内容，包括上传的图片，并恢复示例数据。',
     reset: '恢复',
     restored: '已恢复示例数据',
+    collapse: '收起侧边栏',
+    expand: '展开侧边栏',
   },
   tasksPage: {
     title: '任务',

@@ -1,5 +1,15 @@
-import { CalendarHeart, Flower2, LayoutDashboard, ListTodo, LogOut, RotateCcw, UserRound } from 'lucide-react'
-import { useState } from 'react'
+import {
+  CalendarHeart,
+  Flower2,
+  LayoutDashboard,
+  ListTodo,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RotateCcw,
+  UserRound,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useAuth, useUserName } from '@/auth/AuthProvider'
@@ -17,30 +27,41 @@ const nav = [
   { to: '/appointments', labelKey: 'nav.appointments', icon: CalendarHeart, end: false },
 ]
 
-/** Sidebar navigation for tablet and desktop. */
-function NavItems() {
+const SIDEBAR_KEY = 'sidebar-collapsed'
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Sidebar navigation for tablet and desktop. Collapsed, it shows icons only with the label as a tooltip. */
+function NavItems({ collapsed }: { collapsed: boolean }) {
   const { t } = useTranslation()
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className={cn('flex flex-col gap-1', collapsed && 'items-center')}>
       {nav.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           end={item.end}
+          title={collapsed ? t(item.labelKey) : undefined}
           className={({ isActive }) =>
             cn(
-              'flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              'flex shrink-0 items-center gap-3 rounded-xl text-sm font-medium transition-colors',
+              collapsed ? 'size-10 justify-center' : 'px-3 py-2',
               isActive
                 ? 'bg-brand-100 text-brand-800'
                 : 'text-stone-600 hover:bg-brand-50 hover:text-brand-800',
             )
           }
         >
-          <item.icon size={18} />
-          {t(item.labelKey)}
+          <item.icon size={18} className="shrink-0" />
+          <span className={cn(collapsed && 'sr-only')}>{t(item.labelKey)}</span>
         </NavLink>
       ))}
-      <LanguageSwitch className="mt-4 self-start" />
     </nav>
   )
 }
@@ -86,10 +107,31 @@ function TabBar() {
 }
 
 /** Who is signed in, with sign-out. Shown in the sidebar when Supabase is configured. */
-function UserPanel() {
+function UserPanel({ collapsed }: { collapsed: boolean }) {
   const { t } = useTranslation()
   const auth = useAuth()
   const name = useUserName()
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <div
+          title={name || auth.user?.email}
+          className="flex size-8 items-center justify-center rounded-full bg-brand-100 text-brand-700"
+        >
+          <UserRound size={16} />
+        </div>
+        <button
+          type="button"
+          onClick={() => void auth.signOut()}
+          aria-label={t('auth.signOut')}
+          title={t('auth.signOut')}
+          className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+        >
+          <LogOut size={16} />
+        </button>
+      </div>
+    )
+  }
   return (
     <div className="rounded-xl border border-brand-100 bg-white/70 p-3">
       <div className="flex items-center gap-2">
@@ -116,25 +158,56 @@ export function AppShell() {
   const { t } = useTranslation()
   const auth = useAuth()
   const [resetOpen, setResetOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(readCollapsed)
   const location = useLocation()
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
+    } catch {
+      // Storage can be unavailable (private mode); the toggle still works for this visit.
+    }
+  }, [collapsed])
 
   return (
     <div className="flex min-h-dvh">
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-brand-100 bg-white/80 px-4 py-6 backdrop-blur-md md:flex">
-        <Brand />
-        <div className="mt-8">
-          <NavItems />
+      <aside
+        className={cn(
+          'sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-brand-100 bg-white/80 py-6 backdrop-blur-md transition-[width] duration-200 ease-out md:flex',
+          collapsed ? 'w-[4.5rem] px-3' : 'w-60 px-4',
+        )}
+      >
+        <div className={cn('flex items-center gap-2', collapsed ? 'flex-col' : 'justify-between')}>
+          <Brand compact={collapsed} />
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? t('shell.expand') : t('shell.collapse')}
+            aria-expanded={!collapsed}
+            title={collapsed ? t('shell.expand') : t('shell.collapse')}
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-stone-400 hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-brand-500"
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
-        <div className="mt-auto text-xs text-stone-500">
+        <div className="mt-8">
+          <NavItems collapsed={collapsed} />
+        </div>
+        <div className={cn('mt-auto text-xs text-stone-500', collapsed && 'flex justify-center')}>
           {auth.configured ? (
-            <UserPanel />
+            <UserPanel collapsed={collapsed} />
           ) : (
             <button
               type="button"
               onClick={() => setResetOpen(true)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+              title={collapsed ? 'Reset sample data' : undefined}
+              aria-label={collapsed ? 'Reset sample data' : undefined}
+              className={cn(
+                'flex items-center gap-2 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-800',
+                collapsed ? 'size-9 justify-center' : 'px-2 py-1.5',
+              )}
             >
-              <RotateCcw size={14} /> Reset sample data
+              <RotateCcw size={14} /> {!collapsed && 'Reset sample data'}
             </button>
           )}
         </div>
@@ -163,7 +236,9 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-8 md:py-8">
+        <main className="relative mx-auto w-full max-w-7xl flex-1 px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-8 md:py-8">
+          {/* Desktop language switch, top right of the page; phones have it in the header. */}
+          <LanguageSwitch className="absolute top-8 right-8 z-10 hidden md:flex" />
           <div key={location.pathname} className="animate-fade-in">
             <Outlet />
           </div>
