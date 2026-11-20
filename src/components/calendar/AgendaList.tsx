@@ -9,7 +9,7 @@ export interface AgendaItem {
   end: string
   title: string
   subtitle?: ReactNode
-  tone: 'brand' | 'accent' | 'muted' | 'task'
+  tone: 'brand' | 'accent' | 'muted' | 'task' | 'pending'
   /** Shown without a time, e.g. a to-do due that day. */
   allDay?: boolean
   /** Label shown in the time column for all-day rows, e.g. a task's status. */
@@ -32,6 +32,7 @@ const bar: Record<AgendaItem['tone'], string> = {
   accent: 'bg-accent-500',
   muted: 'bg-stone-300',
   task: 'bg-amber-400',
+  pending: 'bg-blue-500',
 }
 
 export function AgendaRow({ item }: { item: AgendaItem }) {

@@ -45,7 +45,7 @@ export function YogaSchedule() {
       start: s.start,
       end: s.end,
       title: s.title,
-      tone: s.status === 'cancelled' ? ('muted' as const) : ('brand' as const),
+      tone: s.status === 'cancelled' ? ('muted' as const) : s.status === 'tbc' ? ('pending' as const) : ('brand' as const),
     })),
     ...tasks.map(taskToEvent),
   ]
@@ -82,7 +82,7 @@ export function YogaSchedule() {
     subtitle: [labels.sessionKindLabel[s.kind], s.studentId ? studentName.get(s.studentId) : null, s.location]
       .filter(Boolean)
       .join(' · '),
-    tone: s.status === 'cancelled' ? 'muted' : 'brand',
+    tone: s.status === 'cancelled' ? 'muted' : s.status === 'tbc' ? 'pending' : 'brand',
     badges: (
       <>
         {s.role === 'attending' && <Badge tone="info">{t('role.attending')}</Badge>}
@@ -123,6 +123,9 @@ export function YogaSchedule() {
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-stone-400" /> {t('yoga.cancelled')}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-blue-500" /> {t('sessionStatus.tbc')}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-amber-500" /> {t('task.legend')}

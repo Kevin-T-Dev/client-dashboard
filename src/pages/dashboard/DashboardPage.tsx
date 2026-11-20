@@ -45,7 +45,7 @@ export function DashboardPage() {
         subtitle: [labels.sessionKindLabel[s.kind], s.studentId ? studentName.get(s.studentId) : null, s.location]
           .filter(Boolean)
           .join(' · '),
-        tone: s.status === 'done' ? 'muted' : 'brand',
+        tone: s.status === 'done' ? 'muted' : s.status === 'tbc' ? 'pending' : 'brand',
         badges: (
           <>
             <Badge tone="brand">{t('dashboard.yoga')}</Badge>
@@ -64,7 +64,7 @@ export function DashboardPage() {
         end: a.end,
         title: a.title,
         subtitle: [a.provider, a.location, labels.categoryLabel[a.category]].filter(Boolean).join(' · '),
-        tone: a.status === 'done' ? 'muted' : 'accent',
+        tone: a.status === 'done' ? 'muted' : a.status === 'tbc' ? 'pending' : 'accent',
         badges: (
           <>
             <Badge tone="accent">{t('dashboard.appointment')}</Badge>
