@@ -21,7 +21,7 @@ export function parseTaskLines(text: string): string[] {
 
 /** Older rows may carry an area that no longer exists; they belong to yoga. */
 export function taskArea(task: Task): TaskArea {
-  return task.area === 'appointments' ? 'appointments' : 'yoga'
+  return task.area === 'appointments' ? 'appointments' : task.area === 'others' ? 'others' : 'yoga'
 }
 
 /** Local midnight of the due day, so the task sorts before timed items. */
@@ -83,7 +83,15 @@ export function useTaskAgendaItem(onOpen: (task: Task) => void) {
       badges: (
         <>
           {showArea && (
-            <Badge tone={area === 'appointments' ? 'accent' : 'brand'}>
+            <Badge
+              tone={
+                area === 'appointments'
+                  ? 'accent'
+                  : area === 'others'
+                  ? 'warning'
+                  : 'brand'
+              }
+            >
               {labels.taskAreas.find((item) => item.value === area)?.label}
             </Badge>
           )}

@@ -60,6 +60,7 @@ const PRIORITY_KEY: Record<TaskPriority, string> = {
 const AREA_KEY: Record<TaskArea, string> = {
   yoga: 'area.yoga',
   appointments: 'area.appointments',
+  others: 'area.others',
 }
 const COLUMN_TITLE: Record<TaskColumn, string> = {
   todo: 'column.todo',

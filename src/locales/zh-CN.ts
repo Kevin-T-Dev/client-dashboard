@@ -126,6 +126,7 @@ export const zh: typeof en = {
   area: {
     yoga: '瑜伽',
     appointments: '预约',
+    others: '其他',
   },
   priority: {
     low: '低',
