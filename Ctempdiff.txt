@@ -1,0 +1,979 @@
+diff --git a/src/components/calendar/AgendaList.tsx b/src/components/calendar/AgendaList.tsx
+index c2e0acb..f93511d 100644
+--- a/src/components/calendar/AgendaList.tsx
++++ b/src/components/calendar/AgendaList.tsx
+@@ -9,7 +9,7 @@ export interface AgendaItem {
+   end: string
+   title: string
+   subtitle?: ReactNode
+-  tone: 'brand' | 'accent' | 'muted' | 'task'
++  tone: 'brand' | 'accent' | 'muted' | 'task' | 'pending'
+   /** Shown without a time, e.g. a to-do due that day. */
+   allDay?: boolean
+   /** Label shown in the time column for all-day rows, e.g. a task's status. */
+@@ -32,6 +32,7 @@ const bar: Record<AgendaItem['tone'], string> = {
+   accent: 'bg-accent-500',
+   muted: 'bg-stone-300',
+   task: 'bg-amber-400',
++  pending: 'bg-blue-500',
+ }
+ 
+ export function AgendaRow({ item }: { item: AgendaItem }) {
+diff --git a/src/components/calendar/MonthCalendar.tsx b/src/components/calendar/MonthCalendar.tsx
+index 0689a4e..246b9fa 100644
+--- a/src/components/calendar/MonthCalendar.tsx
++++ b/src/components/calendar/MonthCalendar.tsx
+@@ -17,7 +17,8 @@ import { cn } from '@/lib/cn'
+ import { dateLocale, dayKey, fmtMonth, fmtTime, fmtWeekday } from '@/lib/dates'
+ import { Button } from '../ui/Button'
+ 
+-export type CalendarTone = 'brand' | 'accent' | 'muted' | 'task'
++/** `pending` marks items still waiting on confirmation (blue, like the pending badge). */
++export type CalendarTone = 'brand' | 'accent' | 'muted' | 'task' | 'pending'
+ 
+ export interface CalendarEvent {
+   id: string
+@@ -46,6 +47,7 @@ const chipTone: Record<CalendarTone, string> = {
+   accent: 'bg-accent-100 text-accent-900',
+   muted: 'bg-stone-100 text-stone-500 line-through',
+   task: 'bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200',
++  pending: 'bg-blue-100 text-blue-900 ring-1 ring-inset ring-blue-300',
+ }
+ 
+ const dotTone: Record<CalendarTone, string> = {
+@@ -53,6 +55,7 @@ const dotTone: Record<CalendarTone, string> = {
+   accent: 'bg-accent-500',
+   muted: 'bg-stone-400',
+   task: 'bg-amber-500',
++  pending: 'bg-blue-500',
+ }
+ 
+ export function MonthCalendar({
+diff --git a/src/components/layout/AppShell.tsx b/src/components/layout/AppShell.tsx
+index 9c1f639..beb6c8d 100644
+--- a/src/components/layout/AppShell.tsx
++++ b/src/components/layout/AppShell.tsx
+@@ -1,5 +1,15 @@
+-import { CalendarHeart, Flower2, LayoutDashboard, ListTodo, LogOut, RotateCcw, UserRound } from 'lucide-react'
+-import { useState } from 'react'
++import {
++  CalendarHeart,
++  Flower2,
++  LayoutDashboard,
++  ListTodo,
++  LogOut,
++  PanelLeftClose,
++  PanelLeftOpen,
++  RotateCcw,
++  UserRound,
++} from 'lucide-react'
++import { useEffect, useState } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import { NavLink, Outlet, useLocation } from 'react-router'
+ import { useAuth, useUserName } from '@/auth/AuthProvider'
+@@ -17,30 +27,41 @@ const nav = [
+   { to: '/appointments', labelKey: 'nav.appointments', icon: CalendarHeart, end: false },
+ ]
+ 
+-/** Sidebar navigation for tablet and desktop. */
+-function NavItems() {
++const SIDEBAR_KEY = 'sidebar-collapsed'
++
++function readCollapsed(): boolean {
++  try {
++    return localStorage.getItem(SIDEBAR_KEY) === '1'
++  } catch {
++    return false
++  }
++}
++
++/** Sidebar navigation for tablet and desktop. Collapsed, it shows icons only with the label as a tooltip. */
++function NavItems({ collapsed }: { collapsed: boolean }) {
+   const { t } = useTranslation()
+   return (
+-    <nav className="flex flex-col gap-1">
++    <nav className={cn('flex flex-col gap-1', collapsed && 'items-center')}>
+       {nav.map((item) => (
+         <NavLink
+           key={item.to}
+           to={item.to}
+           end={item.end}
++          title={collapsed ? t(item.labelKey) : undefined}
+           className={({ isActive }) =>
+             cn(
+-              'flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
++              'flex shrink-0 items-center gap-3 rounded-xl text-sm font-medium transition-colors',
++              collapsed ? 'size-10 justify-center' : 'px-3 py-2',
+               isActive
+                 ? 'bg-brand-100 text-brand-800'
+                 : 'text-stone-600 hover:bg-brand-50 hover:text-brand-800',
+             )
+           }
+         >
+-          <item.icon size={18} />
+-          {t(item.labelKey)}
++          <item.icon size={18} className="shrink-0" />
++          <span className={cn(collapsed && 'sr-only')}>{t(item.labelKey)}</span>
+         </NavLink>
+       ))}
+-      <LanguageSwitch className="mt-4 self-start" />
+     </nav>
+   )
+ }
+@@ -86,10 +107,31 @@ function TabBar() {
+ }
+ 
+ /** Who is signed in, with sign-out. Shown in the sidebar when Supabase is configured. */
+-function UserPanel() {
++function UserPanel({ collapsed }: { collapsed: boolean }) {
+   const { t } = useTranslation()
+   const auth = useAuth()
+   const name = useUserName()
++  if (collapsed) {
++    return (
++      <div className="flex flex-col items-center gap-1">
++        <div
++          title={name || auth.user?.email}
++          className="flex size-8 items-center justify-center rounded-full bg-brand-100 text-brand-700"
++        >
++          <UserRound size={16} />
++        </div>
++        <button
++          type="button"
++          onClick={() => void auth.signOut()}
++          aria-label={t('auth.signOut')}
++          title={t('auth.signOut')}
++          className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900"
++        >
++          <LogOut size={16} />
++        </button>
++      </div>
++    )
++  }
+   return (
+     <div className="rounded-xl border border-brand-100 bg-white/70 p-3">
+       <div className="flex items-center gap-2">
+@@ -116,25 +158,56 @@ export function AppShell() {
+   const { t } = useTranslation()
+   const auth = useAuth()
+   const [resetOpen, setResetOpen] = useState(false)
++  const [collapsed, setCollapsed] = useState(readCollapsed)
+   const location = useLocation()
+ 
++  useEffect(() => {
++    try {
++      localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
++    } catch {
++      // Storage can be unavailable (private mode); the toggle still works for this visit.
++    }
++  }, [collapsed])
++
+   return (
+     <div className="flex min-h-dvh">
+-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-brand-100 bg-white/80 px-4 py-6 backdrop-blur-md md:flex">
+-        <Brand />
++      <aside
++        className={cn(
++          'sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-brand-100 bg-white/80 py-6 backdrop-blur-md transition-[width] duration-200 ease-out md:flex',
++          collapsed ? 'w-[4.5rem] px-3' : 'w-60 px-4',
++        )}
++      >
++        <div className={cn('flex items-center gap-2', collapsed ? 'flex-col' : 'justify-between')}>
++          <Brand compact={collapsed} />
++          <button
++            type="button"
++            onClick={() => setCollapsed((c) => !c)}
++            aria-label={collapsed ? t('shell.expand') : t('shell.collapse')}
++            aria-expanded={!collapsed}
++            title={collapsed ? t('shell.expand') : t('shell.collapse')}
++            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-stone-400 hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-brand-500"
++          >
++            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
++          </button>
++        </div>
+         <div className="mt-8">
+-          <NavItems />
++          <NavItems collapsed={collapsed} />
+         </div>
+-        <div className="mt-auto text-xs text-stone-500">
++        <div className={cn('mt-auto text-xs text-stone-500', collapsed && 'flex justify-center')}>
+           {auth.configured ? (
+-            <UserPanel />
++            <UserPanel collapsed={collapsed} />
+           ) : (
+             <button
+               type="button"
+               onClick={() => setResetOpen(true)}
+-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800"
++              title={collapsed ? 'Reset sample data' : undefined}
++              aria-label={collapsed ? 'Reset sample data' : undefined}
++              className={cn(
++                'flex items-center gap-2 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-800',
++                collapsed ? 'size-9 justify-center' : 'px-2 py-1.5',
++              )}
+             >
+-              <RotateCcw size={14} /> Reset sample data
++              <RotateCcw size={14} /> {!collapsed && 'Reset sample data'}
+             </button>
+           )}
+         </div>
+@@ -163,7 +236,9 @@ export function AppShell() {
+             </div>
+           </div>
+         </header>
+-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-8 md:py-8">
++        <main className="relative mx-auto w-full max-w-7xl flex-1 px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-8 md:py-8">
++          {/* Desktop language switch, top right of the page; phones have it in the header. */}
++          <LanguageSwitch className="absolute top-8 right-8 z-10 hidden md:flex" />
+           <div key={location.pathname} className="animate-fade-in">
+             <Outlet />
+           </div>
+diff --git a/src/components/layout/Brand.tsx b/src/components/layout/Brand.tsx
+index 91d49fb..e0b63dc 100644
+--- a/src/components/layout/Brand.tsx
++++ b/src/components/layout/Brand.tsx
+@@ -3,8 +3,11 @@ import { useEffect } from 'react'
+ import { useTranslation } from 'react-i18next'
+ import { useUserName } from '@/auth/AuthProvider'
+ 
+-/** App mark and title. Signed in, the title carries the user's name from their profile. */
+-export function Brand() {
++/**
++ * App mark and title. Signed in, the title carries the user's name from their profile.
++ * `compact` shows only the mark, for the collapsed sidebar.
++ */
++export function Brand({ compact = false }: { compact?: boolean }) {
+   const { t } = useTranslation()
+   const name = useUserName()
+   const title = name ? t('brand.named', { name }) : t('brand.title')
+@@ -14,13 +17,15 @@ export function Brand() {
+   }, [title])
+ 
+   return (
+-    <div className="flex items-center gap-3">
+-      <div className="flex size-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-300/60">
++    <div className="flex items-center gap-3" title={compact ? title : undefined}>
++      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-300/60">
+         <Flower size={18} />
+       </div>
+-      <div className="min-w-0 leading-tight">
+-        <div className="truncate text-sm font-semibold text-stone-900">{title}</div>
+-      </div>
++      {!compact && (
++        <div className="min-w-0 leading-tight">
++          <div className="truncate text-sm font-semibold text-stone-900">{title}</div>
++        </div>
++      )}
+     </div>
+   )
+ }
+diff --git a/src/components/ui/DatePicker.tsx b/src/components/ui/DatePicker.tsx
+new file mode 100644
+index 0000000..d748907
+--- /dev/null
++++ b/src/components/ui/DatePicker.tsx
+@@ -0,0 +1,107 @@
++import { Popover } from '@base-ui/react/popover'
++import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
++import { useState } from 'react'
++import { DayPicker, type ChevronProps } from 'react-day-picker'
++import { enUS, zhCN } from 'react-day-picker/locale'
++import { useTranslation } from 'react-i18next'
++import { Button } from '@/components/ui/Button'
++import { cn } from '@/lib/cn'
++import { dayKey, fmtDate, toDate } from '@/lib/dates'
++import { isZh } from '@/lib/i18n'
++
++export interface DatePickerProps {
++  /** Selected day as `yyyy-MM-dd`, or an empty string when unset. */
++  value: string
++  onValueChange: (value: string) => void
++  placeholder?: string
++  /** Shows a "Clear" action so the value can be emptied (for optional dates). */
++  clearable?: boolean
++  disabled?: boolean
++  id?: string
++  className?: string
++}
++
++function CalendarChevron({ orientation }: ChevronProps) {
++  return orientation === 'left' ? <ChevronLeft size={16} /> : <ChevronRight size={16} />
++}
++
++const navButton =
++  'inline-flex size-8 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-800 focus-visible:outline-2 focus-visible:outline-brand-500 disabled:opacity-40'
++
++/** A date field that opens a calendar popover. Built on Base UI Popover and react-day-picker. */
++export function DatePicker({ value, onValueChange, placeholder, clearable, disabled, id, className }: DatePickerProps) {
++  const { t } = useTranslation()
++  const [open, setOpen] = useState(false)
++  const selected = value ? toDate(value) : undefined
++
++  function choose(next: string) {
++    onValueChange(next)
++    setOpen(false)
++  }
++
++  return (
++    <Popover.Root open={open} onOpenChange={setOpen}>
++      <Popover.Trigger
++        id={id}
++        disabled={disabled}
++        className={cn(
++          'flex h-10 w-full items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-left text-sm text-stone-900 shadow-xs select-none hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-400 data-popup-open:border-brand-300',
++          className,
++        )}
++      >
++        <CalendarDays size={16} className="shrink-0 text-stone-400" />
++        <span className={cn('min-w-0 flex-1 truncate', !selected && 'text-stone-400')}>
++          {selected ? fmtDate(selected, true) : (placeholder ?? t('common.pickDate'))}
++        </span>
++      </Popover.Trigger>
++      <Popover.Portal>
++        <Popover.Positioner className="z-50 outline-none" sideOffset={6} align="start">
++          <Popover.Popup className="origin-(--transform-origin) rounded-xl border border-stone-200 bg-white p-3 shadow-lg outline-none transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0">
++            <DayPicker
++              mode="single"
++              selected={selected}
++              defaultMonth={selected}
++              onSelect={(date) => date && choose(dayKey(date))}
++              locale={isZh() ? zhCN : enUS}
++              showOutsideDays
++              autoFocus
++              components={{ Chevron: CalendarChevron }}
++              classNames={{
++                root: 'text-sm',
++                months: 'relative',
++                month: 'flex flex-col gap-2',
++                month_caption: 'flex h-8 items-center justify-center',
++                caption_label: 'text-sm font-semibold text-stone-900',
++                nav: 'absolute inset-x-0 top-0 flex items-center justify-between',
++                button_previous: navButton,
++                button_next: navButton,
++                month_grid: 'border-collapse',
++                weekdays: '',
++                weekday: 'size-9 text-xs font-medium text-stone-400',
++                week: '',
++                day: 'p-0 text-center',
++                day_button:
++                  'size-9 rounded-md text-sm text-stone-800 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-brand-500',
++                today: '[&>button]:font-semibold [&>button]:text-brand-700',
++                outside: '[&>button]:text-stone-300',
++                selected: '[&>button]:bg-brand-600 [&>button]:text-white! [&>button]:hover:bg-brand-600',
++                disabled: 'opacity-40',
++                hidden: 'invisible',
++              }}
++            />
++            <div className="mt-2 flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
++              <Button variant="ghost" size="sm" onClick={() => choose(dayKey(new Date()))}>
++                {t('common.today')}
++              </Button>
++              {clearable && value && (
++                <Button variant="ghost" size="sm" onClick={() => choose('')}>
++                  {t('common.clearDate')}
++                </Button>
++              )}
++            </div>
++          </Popover.Popup>
++        </Popover.Positioner>
++      </Popover.Portal>
++    </Popover.Root>
++  )
++}
+diff --git a/src/components/ui/PageHeader.tsx b/src/components/ui/PageHeader.tsx
+index 9a52c29..6bea176 100644
+--- a/src/components/ui/PageHeader.tsx
++++ b/src/components/ui/PageHeader.tsx
+@@ -12,7 +12,8 @@ export interface PageHeaderProps {
+ export function PageHeader({ title, description, actions, eyebrow, className }: PageHeaderProps) {
+   return (
+     <div className={cn('mb-6 flex flex-wrap items-end justify-between gap-4', className)}>
+-      <div className="min-w-0">
++      {/* Right padding on desktop keeps text clear of the language switch in the page corner. */}
++      <div className="min-w-0 md:pr-28">
+         {eyebrow && <div className="mb-1 text-xs font-medium tracking-wide text-stone-500 uppercase">{eyebrow}</div>}
+         <h1 className="text-2xl font-semibold tracking-tight text-stone-900">{title}</h1>
+         {description && <p className="mt-1 text-sm text-stone-500">{description}</p>}
+diff --git a/src/components/ui/TimePicker.tsx b/src/components/ui/TimePicker.tsx
+new file mode 100644
+index 0000000..b3357db
+--- /dev/null
++++ b/src/components/ui/TimePicker.tsx
+@@ -0,0 +1,115 @@
++import { Clock } from 'lucide-react'
++import { useEffect, useRef } from 'react'
++import { useTranslation } from 'react-i18next'
++import { formatTime, parseTime, TimepickerUI, type ConfirmEventData } from 'timepicker-ui'
++import 'timepicker-ui/main.css'
++import { inputClass } from '@/components/ui/Field'
++import { cn } from '@/lib/cn'
++
++export interface TimePickerProps {
++  /** Selected time as `HH:mm` (24-hour), or an empty string when unset. */
++  value: string
++  onValueChange: (value: string) => void
++  /** Minute step on the clock face. Defaults to 5. */
++  step?: number
++  placeholder?: string
++  disabled?: boolean
++  id?: string
++  className?: string
++}
++
++type ClockType = '12h' | '24h'
++
++/** Convert the picker's confirm payload to `HH:mm`. */
++function toKey(data: ConfirmEventData, clockType: ClockType): string | null {
++  if (!data.hour || !data.minutes) return null
++  const parsed = parseTime(formatTime({ hour: data.hour, minutes: data.minutes, type: data.type }, { clockType }), {
++    clockType: '24h',
++  })
++  return parsed ? `${parsed.hour.padStart(2, '0')}:${parsed.minutes.padStart(2, '0')}` : null
++}
++
++/** Text the picker shows in the field for an `HH:mm` value. */
++function toDisplay(value: string, clockType: ClockType): string {
++  const parsed = value ? parseTime(value, { clockType }) : null
++  return parsed ? formatTime(parsed, { clockType }) : ''
++}
++
++/**
++ * A time field that opens the timepicker-ui clock dialog.
++ * English uses a 12-hour clock and Chinese a 24-hour clock.
++ */
++export function TimePicker({ value, onValueChange, step = 5, placeholder, disabled, id, className }: TimePickerProps) {
++  const { t, i18n } = useTranslation()
++  const inputRef = useRef<HTMLInputElement>(null)
++  const pickerRef = useRef<TimepickerUI | null>(null)
++  const onChangeRef = useRef(onValueChange)
++  const valueRef = useRef(value)
++  const clockType: ClockType = i18n.language.startsWith('zh') ? '24h' : '12h'
++
++  useEffect(() => {
++    onChangeRef.current = onValueChange
++    valueRef.current = value
++  })
++
++  useEffect(() => {
++    const input = inputRef.current
++    if (!input) return
++    // Mount the clock next to the surrounding dialog, not inside it: the dialog is
++    // transformed (which breaks the clock's fixed positioning), and its portal
++    // container keeps clicks on the clock from counting as outside clicks.
++    const host = input.closest<HTMLElement>('[role="dialog"]')?.parentElement ?? document.body
++    const picker = new TimepickerUI(input, {
++      clock: { type: clockType, incrementMinutes: step },
++      ui: { appendTo: host, cssClass: 'tp-brand' },
++      labels: {
++        ok: t('timePicker.ok'),
++        cancel: t('common.cancel'),
++        time: t('timePicker.title'),
++        mobileTime: t('timePicker.enterTime'),
++        hour: t('timePicker.hour'),
++        minute: t('timePicker.minute'),
++        mobileHour: t('timePicker.hour'),
++        mobileMinute: t('timePicker.minute'),
++      },
++    })
++    picker.create()
++    if (valueRef.current) picker.setValue(valueRef.current)
++    const off = picker.on('confirm', (data) => {
++      const next = toKey(data, clockType)
++      if (next) onChangeRef.current(next)
++    })
++    pickerRef.current = picker
++    return () => {
++      off()
++      picker.destroy()
++      pickerRef.current = null
++    }
++  }, [clockType, step, t])
++
++  // Keep the field in sync when the value changes from outside the picker.
++  useEffect(() => {
++    const input = inputRef.current
++    if (!input) return
++    const display = toDisplay(value, clockType)
++    if (input.value !== display) {
++      if (value) pickerRef.current?.setValue(value)
++      input.value = display
++    }
++  }, [value, clockType])
++
++  return (
++    <div className={cn('relative', className)}>
++      <Clock size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-stone-400" />
++      <input
++        ref={inputRef}
++        id={id}
++        readOnly
++        disabled={disabled}
++        defaultValue={toDisplay(value, clockType)}
++        placeholder={placeholder ?? t('timePicker.placeholder')}
++        className={cn(inputClass, 'cursor-pointer pl-9 hover:bg-stone-50')}
++      />
++    </div>
++  )
++}
+diff --git a/src/db/types.ts b/src/db/types.ts
+index 102c498..42d9e91 100644
+--- a/src/db/types.ts
++++ b/src/db/types.ts
+@@ -44,7 +44,7 @@ export interface Student extends Stamped {
+ 
+ export type TaskColumn = 'todo' | 'doing' | 'done'
+ export type TaskPriority = 'low' | 'medium' | 'high'
+-export type TaskArea = 'yoga' | 'appointments'
++export type TaskArea = 'yoga' | 'appointments' | 'others'
+ 
+ export interface Task extends Stamped {
+   title: string
+diff --git a/src/index.css b/src/index.css
+index b063764..3d0e6d7 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -85,3 +85,38 @@ input[type="datetime-local"] {
+     animation: none;
+   }
+ }
++
++/* timepicker-ui: match the clock dialog to the app's brand palette. */
++.tp-ui-wrapper.tp-brand {
++  --tp-font-family: var(--font-sans);
++  --tp-bg: #ffffff;
++  --tp-surface: var(--color-stone-100);
++  --tp-surface-container: var(--color-stone-100);
++  --tp-surface-hover: var(--color-brand-100);
++  --tp-input-bg: var(--color-stone-100);
++  --tp-text: var(--color-stone-900);
++  --tp-text-secondary: var(--color-stone-500);
++  --tp-text-type-time: var(--color-stone-900);
++  --tp-text-icon: var(--color-stone-500);
++  --tp-on-surface: var(--color-stone-900);
++  --tp-on-surface-variant: var(--color-stone-500);
++  --tp-primary: var(--color-brand-600);
++  --tp-primary-rgb: 214, 61, 134;
++  --tp-on-primary: #ffffff;
++  --tp-primary-container: var(--color-brand-100);
++  --tp-on-primary-container: var(--color-brand-800);
++  --tp-tertiary-container: var(--color-brand-100);
++  --tp-on-tertiary-container: var(--color-brand-800);
++  --tp-am-pm-active: var(--color-brand-100);
++  --tp-am-pm-text-selected: var(--color-brand-800);
++  --tp-am-pm-text-unselected: var(--color-stone-500);
++  --tp-outline: var(--color-brand-600);
++  --tp-outline-variant: var(--color-stone-200);
++  --tp-border: var(--color-stone-300);
++  --tp-border-radius: 20px;
++  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
++}
++
++.tp-ui-modal.show:has(.tp-brand) {
++  background-color: rgb(28 25 23 / 0.25);
++}
+diff --git a/src/lib/labels.ts b/src/lib/labels.ts
+index e6e1a5e..79ae47a 100644
+--- a/src/lib/labels.ts
++++ b/src/lib/labels.ts
+@@ -60,6 +60,7 @@ const PRIORITY_KEY: Record<TaskPriority, string> = {
+ const AREA_KEY: Record<TaskArea, string> = {
+   yoga: 'area.yoga',
+   appointments: 'area.appointments',
++  others: 'area.others',
+ }
+ const COLUMN_TITLE: Record<TaskColumn, string> = {
+   todo: 'column.todo',
+diff --git a/src/locales/en.ts b/src/locales/en.ts
+index 5de88d2..f3eca3d 100644
+--- a/src/locales/en.ts
++++ b/src/locales/en.ts
+@@ -9,6 +9,14 @@ export const en = {
+     yoga: 'Yoga',
+     appointments: 'Appointments',
+   },
++  timePicker: {
++    title: 'Select time',
++    enterTime: 'Enter time',
++    hour: 'Hour',
++    minute: 'Minute',
++    ok: 'OK',
++    placeholder: 'Pick a time',
++  },
+   common: {
+     cancel: 'Cancel',
+     delete: 'Delete',
+@@ -27,6 +35,8 @@ export const en = {
+     moreActions: 'More actions',
+     dismiss: 'Dismiss',
+     select: 'Select…',
++    pickDate: 'Pick a date',
++    clearDate: 'Clear',
+     tagPlaceholder: 'Type and press Enter…',
+     removeTag: 'Remove {{tag}}',
+     removeImage: 'Remove image',
+@@ -114,6 +124,7 @@ export const en = {
+   area: {
+     yoga: 'Yoga',
+     appointments: 'Appointments',
++    others: 'Others',
+   },
+   priority: {
+     low: 'Low',
+@@ -142,6 +153,8 @@ export const en = {
+     resetBody: 'This clears everything you have entered, including uploaded images, and restores the sample data.',
+     reset: 'Reset',
+     restored: 'Sample data restored',
++    collapse: 'Collapse sidebar',
++    expand: 'Expand sidebar',
+   },
+   tasksPage: {
+     title: 'Tasks',
+diff --git a/src/locales/zh-CN.ts b/src/locales/zh-CN.ts
+index 89fe316..51ab1b5 100644
+--- a/src/locales/zh-CN.ts
++++ b/src/locales/zh-CN.ts
+@@ -11,6 +11,14 @@ export const zh: typeof en = {
+     yoga: '瑜伽',
+     appointments: '预约',
+   },
++  timePicker: {
++    title: '选择时间',
++    enterTime: '输入时间',
++    hour: '时',
++    minute: '分',
++    ok: '确定',
++    placeholder: '选择时间',
++  },
+   common: {
+     cancel: '取消',
+     delete: '删除',
+@@ -29,6 +37,8 @@ export const zh: typeof en = {
+     moreActions: '更多操作',
+     dismiss: '关闭通知',
+     select: '请选择…',
++    pickDate: '选择日期',
++    clearDate: '清除',
+     tagPlaceholder: '输入后按回车…',
+     removeTag: '移除 {{tag}}',
+     removeImage: '移除图片',
+@@ -116,6 +126,7 @@ export const zh: typeof en = {
+   area: {
+     yoga: '瑜伽',
+     appointments: '预约',
++    others: '其他',
+   },
+   priority: {
+     low: '低',
+@@ -144,6 +155,8 @@ export const zh: typeof en = {
+     resetBody: '这会清除你输入的所有内容，包括上传的图片，并恢复示例数据。',
+     reset: '恢复',
+     restored: '已恢复示例数据',
++    collapse: '收起侧边栏',
++    expand: '展开侧边栏',
+   },
+   tasksPage: {
+     title: '任务',
+diff --git a/src/pages/appointments/AppointmentDialog.tsx b/src/pages/appointments/AppointmentDialog.tsx
+index b80bdb6..9d40797 100644
+--- a/src/pages/appointments/AppointmentDialog.tsx
++++ b/src/pages/appointments/AppointmentDialog.tsx
+@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
+ import { Button } from '@/components/ui/Button'
+ import { AppDialog } from '@/components/ui/Dialog'
+ import { FormField, TextArea, TextInput } from '@/components/ui/Field'
++import { DatePicker } from '@/components/ui/DatePicker'
++import { TimePicker } from '@/components/ui/TimePicker'
+ import { AppSelect } from '@/components/ui/Select'
+ import { notify } from '@/components/ui/Toaster'
+ import { appointmentsApi } from '@/db/api'
+@@ -144,10 +146,10 @@ function AppointmentForm({
+           <TextInput value={location} onValueChange={setLocation} placeholder={t('appointmentForm.locationPh')} />
+         </FormField>
+         <FormField label={t('common.date')}>
+-          <TextInput type="date" value={dateKey} onValueChange={setDateKey} required />
++          <DatePicker value={dateKey} onValueChange={setDateKey} />
+         </FormField>
+         <FormField label={t('common.startTime')}>
+-          <TextInput type="time" value={time} onValueChange={setTime} required />
++          <TimePicker value={time} onValueChange={setTime} />
+         </FormField>
+         <FormField label={t('common.duration')}>
+           <AppSelect value={duration} onValueChange={setDuration} items={durationItems} tone="accent" />
+diff --git a/src/pages/appointments/AppointmentSchedule.tsx b/src/pages/appointments/AppointmentSchedule.tsx
+index e083862..6607c06 100644
+--- a/src/pages/appointments/AppointmentSchedule.tsx
++++ b/src/pages/appointments/AppointmentSchedule.tsx
+@@ -43,7 +43,7 @@ export function AppointmentSchedule() {
+       start: a.start,
+       end: a.end,
+       title: `${a.title} · ${a.provider}`,
+-      tone: a.status === 'cancelled' ? ('muted' as const) : ('accent' as const),
++      tone: a.status === 'cancelled' ? ('muted' as const) : a.status === 'tbc' ? ('pending' as const) : ('accent' as const),
+     })),
+     ...tasks.map(taskToEvent),
+   ]
+@@ -104,7 +104,7 @@ export function AppointmentSchedule() {
+       end: a.end,
+       title: a.title,
+       subtitle: [a.provider, a.location, labels.categoryLabel[a.category]].filter(Boolean).join(' · '),
+-      tone: a.status === 'cancelled' ? 'muted' : 'accent',
++      tone: a.status === 'cancelled' ? 'muted' : a.status === 'tbc' ? 'pending' : 'accent',
+       badges: (
+         <>
+           {a.status === 'tbc' && <Badge tone="pending">{t('appointmentStatus.tbc')}</Badge>}
+@@ -148,6 +148,9 @@ export function AppointmentSchedule() {
+           <span className="inline-flex items-center gap-1.5">
+             <span className="size-2.5 rounded-full bg-stone-400" /> {t('appointments.cancelled')}
+           </span>
++          <span className="inline-flex items-center gap-1.5">
++            <span className="size-2.5 rounded-full bg-blue-500" /> {t('appointmentStatus.tbc')}
++          </span>
+           <span className="inline-flex items-center gap-1.5">
+             <span className="size-2.5 rounded-full bg-amber-500" /> {t('task.legend')}
+           </span>
+diff --git a/src/pages/appointments/PackageDialog.tsx b/src/pages/appointments/PackageDialog.tsx
+index 3fcc908..dfbd88a 100644
+--- a/src/pages/appointments/PackageDialog.tsx
++++ b/src/pages/appointments/PackageDialog.tsx
+@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
+ import { Button } from '@/components/ui/Button'
+ import { AppDialog } from '@/components/ui/Dialog'
+ import { FormField, TextArea, TextInput } from '@/components/ui/Field'
++import { DatePicker } from '@/components/ui/DatePicker'
+ import { AppSelect } from '@/components/ui/Select'
+ import { notify } from '@/components/ui/Toaster'
+ import { packagesApi } from '@/db/api'
+@@ -130,10 +131,10 @@ function PackageForm({ onOpenChange, pkg, knownProviders }: PackageDialogProps)
+           <TextInput type="number" min={0} step={1} value={sessionsUsed} onValueChange={setSessionsUsed} />
+         </FormField>
+         <FormField label={t('packageForm.signed')}>
+-          <TextInput type="date" value={purchasedAt} onValueChange={setPurchasedAt} required />
++          <DatePicker value={purchasedAt} onValueChange={setPurchasedAt} />
+         </FormField>
+         <FormField label={t('packageForm.expires')} hint={t('packageForm.expiresHint')}>
+-          <TextInput type="date" value={expiresAt} onValueChange={setExpiresAt} />
++          <DatePicker value={expiresAt} onValueChange={setExpiresAt} clearable />
+         </FormField>
+       </div>
+       <FormField label={t('common.notes')} hint={t('packageForm.notesHint')}>
+diff --git a/src/pages/dashboard/DashboardPage.tsx b/src/pages/dashboard/DashboardPage.tsx
+index 9bdf26b..4d73737 100644
+--- a/src/pages/dashboard/DashboardPage.tsx
++++ b/src/pages/dashboard/DashboardPage.tsx
+@@ -45,7 +45,7 @@ export function DashboardPage() {
+         subtitle: [labels.sessionKindLabel[s.kind], s.studentId ? studentName.get(s.studentId) : null, s.location]
+           .filter(Boolean)
+           .join(' · '),
+-        tone: s.status === 'done' ? 'muted' : 'brand',
++        tone: s.status === 'done' ? 'muted' : s.status === 'tbc' ? 'pending' : 'brand',
+         badges: (
+           <>
+             <Badge tone="brand">{t('dashboard.yoga')}</Badge>
+@@ -64,7 +64,7 @@ export function DashboardPage() {
+         end: a.end,
+         title: a.title,
+         subtitle: [a.provider, a.location, labels.categoryLabel[a.category]].filter(Boolean).join(' · '),
+-        tone: a.status === 'done' ? 'muted' : 'accent',
++        tone: a.status === 'done' ? 'muted' : a.status === 'tbc' ? 'pending' : 'accent',
+         badges: (
+           <>
+             <Badge tone="accent">{t('dashboard.appointment')}</Badge>
+diff --git a/src/pages/yoga/LessonPlanDetail.tsx b/src/pages/yoga/LessonPlanDetail.tsx
+index ace4b93..391238e 100644
+--- a/src/pages/yoga/LessonPlanDetail.tsx
++++ b/src/pages/yoga/LessonPlanDetail.tsx
+@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/Badge'
+ import { Button } from '@/components/ui/Button'
+ import { AppDialog } from '@/components/ui/Dialog'
+ import { FormField, TextArea, TextInput } from '@/components/ui/Field'
++import { DatePicker } from '@/components/ui/DatePicker'
++import { TimePicker } from '@/components/ui/TimePicker'
+ import { MediaImage } from '@/components/ui/MediaImage'
+ import { AppSelect } from '@/components/ui/Select'
+ import { notify } from '@/components/ui/Toaster'
+@@ -172,10 +174,10 @@ function CreateLessonForm({
+       </div>
+       <div className="grid gap-4 sm:grid-cols-2">
+         <FormField label={t('common.date')}>
+-          <TextInput type="date" value={dateKey} onValueChange={setDateKey} required />
++          <DatePicker value={dateKey} onValueChange={setDateKey} />
+         </FormField>
+         <FormField label={t('common.startTime')}>
+-          <TextInput type="time" value={time} onValueChange={setTime} required />
++          <TimePicker value={time} onValueChange={setTime} />
+         </FormField>
+       </div>
+       <FormField label={t('common.location')}>
+diff --git a/src/pages/yoga/SessionDialog.tsx b/src/pages/yoga/SessionDialog.tsx
+index d695fc4..d1bc91b 100644
+--- a/src/pages/yoga/SessionDialog.tsx
++++ b/src/pages/yoga/SessionDialog.tsx
+@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
+ import { Button } from '@/components/ui/Button'
+ import { AppDialog } from '@/components/ui/Dialog'
+ import { FormField, TextArea, TextInput } from '@/components/ui/Field'
++import { DatePicker } from '@/components/ui/DatePicker'
++import { TimePicker } from '@/components/ui/TimePicker'
+ import { AppSelect } from '@/components/ui/Select'
+ import { notify } from '@/components/ui/Toaster'
+ import { sessionsApi } from '@/db/api'
+@@ -153,10 +155,10 @@ function SessionForm({ onOpenChange, session, defaultDay, students, plans, onDel
+           <AppSelect value={status} onValueChange={setStatus} items={labels.sessionStatuses} />
+         </FormField>
+         <FormField label={t('common.date')}>
+-          <TextInput type="date" value={dateKey} onValueChange={setDateKey} required />
++          <DatePicker value={dateKey} onValueChange={setDateKey} />
+         </FormField>
+         <FormField label={t('common.startTime')}>
+-          <TextInput type="time" value={time} onValueChange={setTime} required />
++          <TimePicker value={time} onValueChange={setTime} />
+         </FormField>
+         <FormField label={t('common.duration')} hint={durationMode === CUSTOM ? t('session.customHint') : undefined}>
+           <AppSelect value={durationMode} onValueChange={pickDuration} items={durationItems} />
+diff --git a/src/pages/yoga/TaskDialog.tsx b/src/pages/yoga/TaskDialog.tsx
+index 6960e52..5555dc0 100644
+--- a/src/pages/yoga/TaskDialog.tsx
++++ b/src/pages/yoga/TaskDialog.tsx
+@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
+ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+ import { AppDialog } from '@/components/ui/Dialog'
+ import { FormField, TextArea, TextInput } from '@/components/ui/Field'
++import { DatePicker } from '@/components/ui/DatePicker'
+ import { AppSelect } from '@/components/ui/Select'
+ import { notify } from '@/components/ui/Toaster'
+ import { tasksApi } from '@/db/api'
+@@ -42,7 +43,13 @@ function TaskForm({ onOpenChange, task, defaultColumn, defaultDueDate, defaultAr
+   const [column, setColumn] = useState<TaskColumn>(task?.column ?? defaultColumn ?? 'todo')
+   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'medium')
+   const [area, setArea] = useState<TaskArea>(
+-    task ? (task.area === 'appointments' ? 'appointments' : 'yoga') : (defaultArea ?? 'yoga'),
++    task
++      ? task.area === 'appointments'
++        ? 'appointments'
++        : task.area === 'others'
++        ? 'others'
++        : 'yoga'
++      : (defaultArea ?? 'yoga'),
+   )
+   const [dueDate, setDueDate] = useState(task ? (task.dueDate ?? '') : (defaultDueDate ?? todayKey()))
+   const titles = task ? [] : parseTaskLines(title)
+@@ -103,7 +110,7 @@ function TaskForm({ onOpenChange, task, defaultColumn, defaultDueDate, defaultAr
+           <AppSelect value={area} onValueChange={setArea} items={labels.taskAreas} />
+         </FormField>
+         <FormField label={t('task.due')}>
+-          <TextInput type="date" value={dueDate} onValueChange={setDueDate} />
++          <DatePicker value={dueDate} onValueChange={setDueDate} clearable />
+         </FormField>
+       </div>
+ 
+diff --git a/src/pages/yoga/YogaKanban.tsx b/src/pages/yoga/YogaKanban.tsx
+index c502058..8d45cd0 100644
+--- a/src/pages/yoga/YogaKanban.tsx
++++ b/src/pages/yoga/YogaKanban.tsx
+@@ -72,12 +72,14 @@ export function YogaKanban() {
+   const [activeId, setActiveId] = useState<string | null>(null)
+   const [params, setParams] = useSearchParams()
+   const areaParam = params.get('area')
+-  const area: AreaFilter = areaParam === 'yoga' || areaParam === 'appointments' ? areaParam : 'all'
++  const area: AreaFilter = areaParam === 'yoga' || areaParam === 'appointments' || areaParam === 'others' ? areaParam : 'all'
+   const setArea = (next: AreaFilter) => setParams(next === 'all' ? {} : { area: next }, { replace: true })
+   const [dialog, setDialog] = useState<{ open: boolean; task?: Task; column?: TaskColumn }>({ open: false })
+ 
+   const visible =
+-    area === 'all' ? tasks : tasks.filter((t) => (t.area === 'appointments' ? 'appointments' : 'yoga') === area)
++    area === 'all'
++      ? tasks
++      : tasks.filter((t) => (t.area === 'appointments' ? 'appointments' : t.area === 'others' ? 'others' : 'yoga') === area)
+   const columns = useMemo(
+     () =>
+       TASK_COLUMN_ORDER.map((id) => ({
+@@ -288,7 +290,7 @@ function SortableTask({ task, onOpen }: { task: Task; onOpen: () => void }) {
+ const priorityTone = { high: 'danger', medium: 'warning', low: 'neutral' } as const
+ 
+ function shownArea(area: Task['area'] | string): TaskArea {
+-  return area === 'appointments' ? 'appointments' : 'yoga'
++  return area === 'appointments' ? 'appointments' : area === 'others' ? 'others' : 'yoga'
+ }
+ 
+ interface TaskCardViewProps {
+@@ -325,7 +327,17 @@ function TaskCardView({ task, onOpen, dragging, dragProps }: TaskCardViewProps)
+       </p>
+       {task.description && <p className="mt-1 line-clamp-2 text-xs text-stone-500">{task.description}</p>}
+       <div className="mt-2 flex flex-wrap gap-1">
+-        <Badge tone={area === 'appointments' ? 'accent' : 'brand'}>{labels.taskAreas.find((item) => item.value === area)?.label}</Badge>
++        <Badge
++          tone={
++            area === 'appointments'
++              ? 'accent'
++              : area === 'others'
++              ? 'warning'
++              : 'brand'
++          }
++        >
++          {labels.taskAreas.find((item) => item.value === area)?.label}
++        </Badge>
+         {task.priority !== 'low' && (
+           <Badge tone={priorityTone[task.priority]}>{labels.taskPriorities.find((item) => item.value === task.priority)?.label}</Badge>
+         )}
+diff --git a/src/pages/yoga/YogaSchedule.tsx b/src/pages/yoga/YogaSchedule.tsx
+index 53c6001..6dd4658 100644
+--- a/src/pages/yoga/YogaSchedule.tsx
++++ b/src/pages/yoga/YogaSchedule.tsx
+@@ -45,7 +45,7 @@ export function YogaSchedule() {
+       start: s.start,
+       end: s.end,
+       title: s.title,
+-      tone: s.status === 'cancelled' ? ('muted' as const) : ('brand' as const),
++      tone: s.status === 'cancelled' ? ('muted' as const) : s.status === 'tbc' ? ('pending' as const) : ('brand' as const),
+     })),
+     ...tasks.map(taskToEvent),
+   ]
+@@ -82,7 +82,7 @@ export function YogaSchedule() {
+     subtitle: [labels.sessionKindLabel[s.kind], s.studentId ? studentName.get(s.studentId) : null, s.location]
+       .filter(Boolean)
+       .join(' · '),
+-    tone: s.status === 'cancelled' ? 'muted' : 'brand',
++    tone: s.status === 'cancelled' ? 'muted' : s.status === 'tbc' ? 'pending' : 'brand',
+     badges: (
+       <>
+         {s.role === 'attending' && <Badge tone="info">{t('role.attending')}</Badge>}
+@@ -124,6 +124,9 @@ export function YogaSchedule() {
+           <span className="inline-flex items-center gap-1.5">
+             <span className="size-2.5 rounded-full bg-stone-400" /> {t('yoga.cancelled')}
+           </span>
++          <span className="inline-flex items-center gap-1.5">
++            <span className="size-2.5 rounded-full bg-blue-500" /> {t('sessionStatus.tbc')}
++          </span>
+           <span className="inline-flex items-center gap-1.5">
+             <span className="size-2.5 rounded-full bg-amber-500" /> {t('task.legend')}
+           </span>
+diff --git a/src/pages/yoga/taskAgenda.tsx b/src/pages/yoga/taskAgenda.tsx
+index 4b98e87..e406f9a 100644
+--- a/src/pages/yoga/taskAgenda.tsx
++++ b/src/pages/yoga/taskAgenda.tsx
+@@ -21,7 +21,7 @@ export function parseTaskLines(text: string): string[] {
+ 
+ /** Older rows may carry an area that no longer exists; they belong to yoga. */
+ export function taskArea(task: Task): TaskArea {
+-  return task.area === 'appointments' ? 'appointments' : 'yoga'
++  return task.area === 'appointments' ? 'appointments' : task.area === 'others' ? 'others' : 'yoga'
+ }
+ 
+ /** Local midnight of the due day, so the task sorts before timed items. */
+@@ -83,7 +83,15 @@ export function useTaskAgendaItem(onOpen: (task: Task) => void) {
+       badges: (
+         <>
+           {showArea && (
+-            <Badge tone={area === 'appointments' ? 'accent' : 'brand'}>
++            <Badge
++              tone={
++                area === 'appointments'
++                  ? 'accent'
++                  : area === 'others'
++                  ? 'warning'
++                  : 'brand'
++              }
++            >
+               {labels.taskAreas.find((item) => item.value === area)?.label}
+             </Badge>
+           )}

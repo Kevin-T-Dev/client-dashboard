@@ -1,14 +1,18 @@
 import type { BeautyPackage } from '@/db/types'
 import { todayKey } from './dates'
 
-export type PackageStatus = 'active' | 'completed' | 'expired' | 'expiring'
+export type PackageStatus = 'active' | 'completed' | 'expired' | 'expiring' | 'incomplete'
 
 export function sessionsRemaining(p: BeautyPackage): number {
-  return Math.max(0, p.sessionsTotal - p.sessionsUsed)
+  const total = p.sessionsTotal ?? 0
+  const used = p.sessionsUsed ?? 0
+  return Math.max(0, total - used)
 }
 
 export function perSessionPrice(p: BeautyPackage): number {
-  return p.sessionsTotal > 0 ? p.totalPrice / p.sessionsTotal : p.totalPrice
+  const total = p.sessionsTotal ?? 0
+  const price = p.totalPrice ?? 0
+  return total > 0 ? price / total : price
 }
 
 export function daysUntil(dateKey: string, today = todayKey()): number {
@@ -18,6 +22,8 @@ export function daysUntil(dateKey: string, today = todayKey()): number {
 }
 
 export function packageStatus(p: BeautyPackage, today = todayKey()): PackageStatus {
+  // If required fields for status calculation are missing, return 'incomplete'
+  if (p.sessionsTotal === undefined || p.sessionsUsed === undefined) return 'incomplete'
   if (sessionsRemaining(p) === 0) return 'completed'
   if (p.expiresAt && p.expiresAt < today) return 'expired'
   if (p.expiresAt && daysUntil(p.expiresAt, today) <= 30) return 'expiring'
@@ -29,4 +35,5 @@ export const PACKAGE_STATUS_LABEL: Record<PackageStatus, string> = {
   completed: 'Fully used',
   expired: 'Expired',
   expiring: 'Expiring soon',
+  incomplete: 'Incomplete',
 }

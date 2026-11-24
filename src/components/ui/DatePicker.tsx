@@ -1,10 +1,11 @@
 import { Popover } from '@base-ui/react/popover'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { DayPicker, type ChevronProps } from 'react-day-picker'
 import { enUS, zhCN } from 'react-day-picker/locale'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
+import { AppSelect } from '@/components/ui/Select'
 import { cn } from '@/lib/cn'
 import { dayKey, fmtDate, toDate } from '@/lib/dates'
 import { isZh } from '@/lib/i18n'
@@ -28,15 +29,82 @@ function CalendarChevron({ orientation }: ChevronProps) {
 const navButton =
   'inline-flex size-8 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-800 focus-visible:outline-2 focus-visible:outline-brand-500 disabled:opacity-40'
 
+/** Custom caption with month/year dropdowns */
+interface CaptionProps {
+  months: readonly { month: number; year: number; label: string }[]
+  onMonthChange: (month: { month: number; year: number }) => void
+  calendarMonth: { date: Date; weeks: unknown[] }
+  displayIndex: number
+  className?: string
+}
+
+function Caption({ months, onMonthChange, calendarMonth, className }: CaptionProps) {
+  const month = { month: calendarMonth.date.getMonth(), year: calendarMonth.date.getFullYear() }
+  const { t } = useTranslation()
+
+  // Extract unique years from months array
+  const years = useMemo(() => {
+    const yearSet = new Set(months.map(m => m.year))
+    return Array.from(yearSet).sort((a, b) => a - b)
+  }, [months])
+
+  // Get month names for current year
+  const currentYearMonths = months.filter(m => m.year === month.year)
+
+  return (
+    <div className={cn('flex items-center justify-center gap-2', className)}>
+      <AppSelect
+        value={String(month.month)}
+        onValueChange={(v) => onMonthChange({ month: Number(v), year: month.year })}
+        items={currentYearMonths.map((m) => ({ value: String(m.month), label: m.label }))}
+        className="w-auto min-w-[120px]"
+        placeholder={t('common.month')}
+      />
+      <AppSelect
+        value={String(month.year)}
+        onValueChange={(v) => onMonthChange({ month: month.month, year: Number(v) })}
+        items={years.map((y) => ({ value: String(y), label: String(y) }))}
+        className="w-auto min-w-[80px]"
+        placeholder={t('common.year')}
+      />
+    </div>
+  )
+}
+
 /** A date field that opens a calendar popover. Built on Base UI Popover and react-day-picker. */
 export function DatePicker({ value, onValueChange, placeholder, clearable, disabled, id, className }: DatePickerProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [displayMonth, setDisplayMonth] = useState<Date | undefined>(value ? toDate(value) : new Date())
   const selected = value ? toDate(value) : undefined
+
+  // Generate months array for Caption component (current year ± 10 years)
+  const captionMonths = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const startYear = currentYear - 10
+    const endYear = currentYear + 10
+    const locale = isZh() ? 'zh-CN' : 'en-US'
+    const result: { month: number; year: number; label: string }[] = []
+    for (let year = startYear; year <= endYear; year++) {
+      for (let month = 0; month < 12; month++) {
+        const date = new Date(year, month, 1)
+        result.push({
+          month,
+          year,
+          label: date.toLocaleDateString(locale, { month: 'long' })
+        })
+      }
+    }
+    return result
+  }, [])
 
   function choose(next: string) {
     onValueChange(next)
     setOpen(false)
+  }
+
+  function handleCaptionMonthChange(month: { month: number; year: number }) {
+    setDisplayMonth(new Date(month.year, month.month, 1))
   }
 
   return (
@@ -60,12 +128,13 @@ export function DatePicker({ value, onValueChange, placeholder, clearable, disab
             <DayPicker
               mode="single"
               selected={selected}
-              defaultMonth={selected}
+              month={displayMonth}
+              onMonthChange={setDisplayMonth}
               onSelect={(date) => date && choose(dayKey(date))}
               locale={isZh() ? zhCN : enUS}
               showOutsideDays
               autoFocus
-              components={{ Chevron: CalendarChevron }}
+              components={{ Chevron: CalendarChevron, MonthCaption: ({ calendarMonth, displayIndex, className }) => <Caption months={captionMonths} onMonthChange={handleCaptionMonthChange} calendarMonth={calendarMonth} displayIndex={displayIndex} className={className} /> }}
               classNames={{
                 root: 'text-sm',
                 months: 'relative',

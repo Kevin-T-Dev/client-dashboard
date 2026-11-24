@@ -66,7 +66,7 @@ export function AppointmentSchedule() {
       if (a.packageId) {
         const pkg = await db.packages.get(a.packageId)
         if (pkg && sessionsRemaining(pkg) > 0) {
-          await packagesApi.update(pkg.id, { sessionsUsed: pkg.sessionsUsed + 1 })
+          await packagesApi.update(pkg.id, { sessionsUsed: (pkg.sessionsUsed ?? 0) + 1 })
           deductedFrom = pkg.name
         }
       }
@@ -80,7 +80,7 @@ export function AppointmentSchedule() {
       await appointmentsApi.update(a.id, { status: 'upcoming' })
       if (a.status === 'done' && a.packageId) {
         const pkg = await db.packages.get(a.packageId)
-        if (pkg && pkg.sessionsUsed > 0) await packagesApi.update(pkg.id, { sessionsUsed: pkg.sessionsUsed - 1 })
+        if (pkg && (pkg.sessionsUsed ?? 0) > 0) await packagesApi.update(pkg.id, { sessionsUsed: (pkg.sessionsUsed ?? 0) - 1 })
       }
     })
     notify(t('appointments.back'), a.title)

@@ -77,6 +77,7 @@ const PACKAGE_STATUS_KEY: Record<PackageStatus, string> = {
   completed: 'packageStatus.completed',
   expired: 'packageStatus.expired',
   expiring: 'packageStatus.expiring',
+  incomplete: 'packageStatus.incomplete',
 }
 const DURATION_KEY: Record<string, string> = {
   '30': 'duration.m30',

@@ -8,7 +8,6 @@ import { AppSelect } from '@/components/ui/Select'
 import { notify } from '@/components/ui/Toaster'
 import { packagesApi } from '@/db/api'
 import type { AppointmentCategory, BeautyPackage } from '@/db/types'
-import { todayKey } from '@/lib/dates'
 import { useAppLabels } from '@/lib/labels'
 import { CURRENCIES } from '@/lib/money'
 
@@ -44,38 +43,37 @@ function PackageForm({ onOpenChange, pkg, knownProviders }: PackageDialogProps) 
   const [provider, setProvider] = useState(pkg?.provider ?? '')
   const [location, setLocation] = useState(pkg?.location ?? '')
   const [category, setCategory] = useState<AppointmentCategory>(pkg?.category ?? 'facial')
-  const [totalPrice, setTotalPrice] = useState(pkg ? String(pkg.totalPrice) : '')
-  const [currency, setCurrency] = useState<string>(pkg?.currency ?? 'USD')
-  const [sessionsTotal, setSessionsTotal] = useState(pkg ? String(pkg.sessionsTotal) : '10')
-  const [sessionsUsed, setSessionsUsed] = useState(pkg ? String(pkg.sessionsUsed) : '0')
-  const [purchasedAt, setPurchasedAt] = useState(pkg?.purchasedAt ?? todayKey())
+  const [totalPrice, setTotalPrice] = useState(pkg?.totalPrice !== undefined ? String(pkg.totalPrice) : '')
+  const [currency, setCurrency] = useState<string>(pkg?.currency ?? 'MYR')
+  const [sessionsTotal, setSessionsTotal] = useState(pkg?.sessionsTotal !== undefined ? String(pkg.sessionsTotal) : '')
+  const [sessionsUsed, setSessionsUsed] = useState(pkg?.sessionsUsed !== undefined ? String(pkg.sessionsUsed) : '')
+  const [purchasedAt, setPurchasedAt] = useState(pkg?.purchasedAt ?? '')
   const [expiresAt, setExpiresAt] = useState(pkg?.expiresAt ?? '')
   const [notes, setNotes] = useState(pkg?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
   const listId = useId()
 
-  const price = Number(totalPrice)
-  const total = Number(sessionsTotal)
+  const price = totalPrice ? Number(totalPrice) : 0
+  const total = sessionsTotal ? Number(sessionsTotal) : 0
   const perSession = price > 0 && total > 0 ? price / total : null
 
   async function save() {
     if (!name.trim()) return setError(t('packageForm.needName'))
     if (!provider.trim()) return setError(t('appointmentForm.needStore'))
-    if (!(price >= 0)) return setError(t('packageForm.needPrice'))
-    if (!(total >= 1)) return setError(t('packageForm.needSessions'))
-    const used = Math.min(Math.max(0, Number(sessionsUsed) || 0), total)
-    if (!purchasedAt) return setError(t('packageForm.needDate'))
     setError(null)
+    const priceNum = totalPrice ? Number(totalPrice) : undefined
+    const totalNum = sessionsTotal ? Number(sessionsTotal) : undefined
+    const used = totalNum !== undefined ? Math.min(Math.max(0, Number(sessionsUsed) || 0), totalNum) : 0
     const data = {
       name: name.trim(),
       provider: provider.trim(),
       location: location.trim() || undefined,
       category,
-      totalPrice: price,
-      currency,
-      sessionsTotal: total,
-      sessionsUsed: used,
-      purchasedAt,
+      totalPrice: priceNum,
+      currency: priceNum !== undefined ? currency : undefined,
+      sessionsTotal: totalNum,
+      sessionsUsed: totalNum !== undefined ? used : undefined,
+      purchasedAt: purchasedAt || undefined,
       expiresAt: expiresAt || undefined,
       notes: notes.trim() || undefined,
     }
