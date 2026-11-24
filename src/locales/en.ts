@@ -124,6 +124,7 @@ export const en = {
   area: {
     yoga: 'Yoga',
     appointments: 'Appointments',
+    others: 'Others',
   },
   priority: {
     low: 'Low',

@@ -44,7 +44,7 @@ export interface Student extends Stamped {
 
 export type TaskColumn = 'todo' | 'doing' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high'
-export type TaskArea = 'yoga' | 'appointments'
+export type TaskArea = 'yoga' | 'appointments' | 'others'
 
 export interface Task extends Stamped {
   title: string

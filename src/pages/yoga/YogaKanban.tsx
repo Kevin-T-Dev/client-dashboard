@@ -72,12 +72,14 @@ export function YogaKanban() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [params, setParams] = useSearchParams()
   const areaParam = params.get('area')
-  const area: AreaFilter = areaParam === 'yoga' || areaParam === 'appointments' ? areaParam : 'all'
+  const area: AreaFilter = areaParam === 'yoga' || areaParam === 'appointments' || areaParam === 'others' ? areaParam : 'all'
   const setArea = (next: AreaFilter) => setParams(next === 'all' ? {} : { area: next }, { replace: true })
   const [dialog, setDialog] = useState<{ open: boolean; task?: Task; column?: TaskColumn }>({ open: false })
 
   const visible =
-    area === 'all' ? tasks : tasks.filter((t) => (t.area === 'appointments' ? 'appointments' : 'yoga') === area)
+    area === 'all'
+      ? tasks
+      : tasks.filter((t) => (t.area === 'appointments' ? 'appointments' : t.area === 'others' ? 'others' : 'yoga') === area)
   const columns = useMemo(
     () =>
       TASK_COLUMN_ORDER.map((id) => ({
@@ -288,7 +290,7 @@ function SortableTask({ task, onOpen }: { task: Task; onOpen: () => void }) {
 const priorityTone = { high: 'danger', medium: 'warning', low: 'neutral' } as const
 
 function shownArea(area: Task['area'] | string): TaskArea {
-  return area === 'appointments' ? 'appointments' : 'yoga'
+  return area === 'appointments' ? 'appointments' : area === 'others' ? 'others' : 'yoga'
 }
 
 interface TaskCardViewProps {
@@ -325,7 +327,17 @@ function TaskCardView({ task, onOpen, dragging, dragProps }: TaskCardViewProps) 
       </p>
       {task.description && <p className="mt-1 line-clamp-2 text-xs text-stone-500">{task.description}</p>}
       <div className="mt-2 flex flex-wrap gap-1">
-        <Badge tone={area === 'appointments' ? 'accent' : 'brand'}>{labels.taskAreas.find((item) => item.value === area)?.label}</Badge>
+        <Badge
+          tone={
+            area === 'appointments'
+              ? 'accent'
+              : area === 'others'
+              ? 'warning'
+              : 'brand'
+          }
+        >
+          {labels.taskAreas.find((item) => item.value === area)?.label}
+        </Badge>
         {task.priority !== 'low' && (
           <Badge tone={priorityTone[task.priority]}>{labels.taskPriorities.find((item) => item.value === task.priority)?.label}</Badge>
         )}

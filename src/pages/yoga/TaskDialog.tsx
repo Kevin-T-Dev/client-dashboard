@@ -43,7 +43,13 @@ function TaskForm({ onOpenChange, task, defaultColumn, defaultDueDate, defaultAr
   const [column, setColumn] = useState<TaskColumn>(task?.column ?? defaultColumn ?? 'todo')
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'medium')
   const [area, setArea] = useState<TaskArea>(
-    task ? (task.area === 'appointments' ? 'appointments' : 'yoga') : (defaultArea ?? 'yoga'),
+    task
+      ? task.area === 'appointments'
+        ? 'appointments'
+        : task.area === 'others'
+        ? 'others'
+        : 'yoga'
+      : (defaultArea ?? 'yoga'),
   )
   const [dueDate, setDueDate] = useState(task ? (task.dueDate ?? '') : (defaultDueDate ?? todayKey()))
   const titles = task ? [] : parseTaskLines(title)
