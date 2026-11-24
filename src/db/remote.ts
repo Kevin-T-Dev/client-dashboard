@@ -221,11 +221,11 @@ export async function pushPackage(row: BeautyPackage): Promise<void> {
     provider: row.provider,
     location: empty(row.location),
     category: row.category,
-    total_price: row.totalPrice,
-    currency: row.currency,
-    sessions_total: row.sessionsTotal,
-    sessions_used: row.sessionsUsed,
-    purchased_at: row.purchasedAt,
+    total_price: row.totalPrice ?? null,
+    currency: row.currency ?? null,
+    sessions_total: row.sessionsTotal ?? null,
+    sessions_used: row.sessionsUsed ?? null,
+    purchased_at: row.purchasedAt ?? null,
     expires_at: empty(row.expiresAt),
     notes: empty(row.notes),
     created_at: row.createdAt,
@@ -346,11 +346,11 @@ type PackageRow = {
   provider: string
   location: string | null
   category: BeautyPackage['category']
-  total_price: number | string
-  currency: string
-  sessions_total: number
-  sessions_used: number
-  purchased_at: string
+  total_price: number | string | null
+  currency: string | null
+  sessions_total: number | null
+  sessions_used: number | null
+  purchased_at: string | null
   expires_at: string | null
   notes: string | null
   created_at: string
@@ -506,11 +506,11 @@ export async function replaceLocalFromRemote(): Promise<void> {
     provider: row.provider,
     location: row.location ?? undefined,
     category: row.category,
-    totalPrice: Number(row.total_price),
-    currency: row.currency,
-    sessionsTotal: row.sessions_total,
-    sessionsUsed: row.sessions_used,
-    purchasedAt: row.purchased_at,
+    totalPrice: row.total_price !== null && row.total_price !== undefined ? Number(row.total_price) : undefined,
+    currency: row.currency ?? undefined,
+    sessionsTotal: row.sessions_total ?? undefined,
+    sessionsUsed: row.sessions_used ?? undefined,
+    purchasedAt: row.purchased_at ?? undefined,
     expiresAt: row.expires_at ?? undefined,
     notes: row.notes ?? undefined,
     createdAt: row.created_at,

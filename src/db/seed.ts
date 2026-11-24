@@ -315,7 +315,7 @@ async function writeSeedData(): Promise<void> {
     provider: 'Glow Studio',
     category: 'facial',
     totalPrice: 1280,
-    currency: 'USD',
+    currency: 'MYR',
     sessionsTotal: 10,
     sessionsUsed: 4,
     purchasedAt: monthsAgo(2),
@@ -327,7 +327,7 @@ async function writeSeedData(): Promise<void> {
     provider: 'Serenity Spa',
     category: 'massage',
     totalPrice: 450,
-    currency: 'USD',
+    currency: 'MYR',
     sessionsTotal: 5,
     sessionsUsed: 5,
     purchasedAt: monthsAgo(6),
@@ -338,7 +338,7 @@ async function writeSeedData(): Promise<void> {
     provider: 'Salon Mira',
     category: 'hair',
     totalPrice: 690,
-    currency: 'USD',
+    currency: 'MYR',
     sessionsTotal: 3,
     sessionsUsed: 1,
     purchasedAt: monthsAgo(5),
@@ -350,7 +350,7 @@ async function writeSeedData(): Promise<void> {
     provider: 'Lash Bar',
     category: 'body',
     totalPrice: 360,
-    currency: 'USD',
+    currency: 'MYR',
     sessionsTotal: 6,
     sessionsUsed: 2,
     purchasedAt: monthsAgo(10),
@@ -361,13 +361,22 @@ async function writeSeedData(): Promise<void> {
     provider: 'Nail Loft',
     category: 'nails',
     totalPrice: 320,
-    currency: 'USD',
+    currency: 'MYR',
     sessionsTotal: 8,
     sessionsUsed: 3,
     purchasedAt: monthsAgo(1),
     expiresAt: monthsAhead(11),
   })
-  const packages = [facialPkg, massagePkg, keratinPkg, lashPkg, nailPkg]
+  // Package with incomplete data to demonstrate "incomplete" status
+  const incompletePkg = pkg({
+    name: 'Trial Facial Package',
+    provider: 'New Spa',
+    category: 'facial',
+    // Missing: totalPrice, currency, sessionsTotal, sessionsUsed, purchasedAt
+    expiresAt: monthsAhead(3),
+    notes: 'Still need to confirm pricing and sessions.',
+  })
+  const packages = [facialPkg, massagePkg, keratinPkg, lashPkg, nailPkg, incompletePkg]
 
   /* Appointments ---------------------------------------------------- */
   const appt = (

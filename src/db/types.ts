@@ -112,13 +112,17 @@ export interface BeautyPackage extends Stamped {
   /** Address or room, when the store name is not the place itself */
   location?: string
   category: AppointmentCategory
-  totalPrice: number
-  currency: string
-  sessionsTotal: number
-  sessionsUsed: number
-  /** yyyy-MM-dd */
-  purchasedAt: string
-  /** yyyy-MM-dd */
+  /** Total price paid for the package (optional) */
+  totalPrice?: number
+  /** Currency code for the price (ISO 4217) (optional) */
+  currency?: string
+  /** Total number of sessions included in the package (optional) */
+  sessionsTotal?: number
+  /** Number of sessions already used (optional) */
+  sessionsUsed?: number
+  /** Purchase date as yyyy-MM-dd (optional) */
+  purchasedAt?: string
+  /** Expiry date as yyyy-MM-dd (optional) */
   expiresAt?: string
   notes?: string
 }

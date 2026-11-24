@@ -35,8 +35,9 @@ const statusTone: Record<PackageStatus, BadgeTone> = {
   expiring: 'warning',
   completed: 'neutral',
   expired: 'danger',
+  incomplete: 'neutral',
 }
-const statusRank: Record<PackageStatus, number> = { expiring: 0, active: 1, completed: 2, expired: 3 }
+const statusRank: Record<PackageStatus, number> = { expiring: 0, active: 1, completed: 2, expired: 3, incomplete: 4 }
 
 export function PackageCounter() {
   const { t } = useTranslation()
@@ -47,6 +48,7 @@ export function PackageCounter() {
     { value: 'expiring', label: labels.packageStatusLabel.expiring },
     { value: 'completed', label: labels.packageStatusLabel.completed },
     { value: 'expired', label: labels.packageStatusLabel.expired },
+    { value: 'incomplete', label: labels.packageStatusLabel.incomplete },
   ]
   const packages = useLiveQuery(() => db.packages.toArray(), []) ?? []
   const [filter, setFilter] = useState<StatusFilter>('all')
@@ -82,14 +84,18 @@ export function PackageCounter() {
   const expiringCount = withStatus.filter(({ status }) => status === 'expiring').length
   const invested = useMemo(() => {
     const byCurrency = new Map<string, number>()
-    for (const p of packages) byCurrency.set(p.currency, (byCurrency.get(p.currency) ?? 0) + p.totalPrice)
+    for (const p of packages) {
+      const currency = p.currency ?? 'USD'
+      const price = p.totalPrice ?? 0
+      byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + price)
+    }
     return [...byCurrency.entries()].map(([c, v]) => formatMoney(v, c)).join(' · ') || formatMoney(0, 'USD')
   }, [packages])
   const providers = useMemo(() => [...new Set(packages.map((p) => p.provider))].sort(), [packages])
 
   async function useSession(pkg: BeautyPackage) {
     if (sessionsRemaining(pkg) === 0) return
-    await packagesApi.update(pkg.id, { sessionsUsed: pkg.sessionsUsed + 1 })
+    await packagesApi.update(pkg.id, { sessionsUsed: (pkg.sessionsUsed ?? 0) + 1 })
     const left = sessionsRemaining(pkg) - 1
     notify(
       t('packages.usedToast'),
@@ -98,8 +104,8 @@ export function PackageCounter() {
   }
 
   async function undoSession(pkg: BeautyPackage) {
-    if (pkg.sessionsUsed === 0) return
-    await packagesApi.update(pkg.id, { sessionsUsed: pkg.sessionsUsed - 1 })
+    if ((pkg.sessionsUsed ?? 0) === 0) return
+    await packagesApi.update(pkg.id, { sessionsUsed: (pkg.sessionsUsed ?? 0) - 1 })
     notify(t('packages.restored'), t('packages.restoredBody', { name: pkg.name, left: sessionsRemaining(pkg) + 1 }))
   }
 
@@ -221,6 +227,8 @@ function PackageCard({ pkg, status, onUse, onUndo, onEdit, onDelete }: PackageCa
   const left = sessionsRemaining(pkg)
   const days = pkg.expiresAt ? daysUntil(pkg.expiresAt) : null
   const when = days === null ? '' : days === 1 ? t('common.day', { n: days }) : t('common.day_other', { n: days })
+  const hasCompleteData = pkg.totalPrice !== undefined && pkg.currency !== undefined && pkg.sessionsTotal !== undefined && pkg.sessionsUsed !== undefined && pkg.purchasedAt !== undefined
+
   return (
     <Card className={cn('flex flex-col gap-4 p-5', status === 'expired' && 'opacity-75')}>
       <div className="flex items-start justify-between gap-3">
@@ -245,43 +253,55 @@ function PackageCard({ pkg, status, onUse, onUndo, onEdit, onDelete }: PackageCa
         <ActionMenu
           items={[
             { label: t('common.edit'), icon: <Pencil size={14} />, onClick: onEdit },
-            { label: t('packages.undo'), icon: <Minus size={14} />, onClick: onUndo, disabled: pkg.sessionsUsed === 0 },
+            { label: t('packages.undo'), icon: <Minus size={14} />, onClick: onUndo, disabled: (pkg.sessionsUsed ?? 0) === 0 },
             { label: t('common.delete'), icon: <Trash size={14} />, danger: true, onClick: onDelete },
           ]}
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3 rounded-lg bg-stone-50 p-3 text-center">
-        <div>
-          <div className="text-lg font-semibold text-stone-900 tabular-nums">{formatMoney(pkg.totalPrice, pkg.currency)}</div>
-          <div className="text-[11px] text-stone-500">{t('packages.price')}</div>
-        </div>
-        <div>
-          <div className="text-lg font-semibold text-stone-900 tabular-nums">{formatMoney(perSessionPrice(pkg), pkg.currency)}</div>
-          <div className="text-[11px] text-stone-500">{t('packages.perSession')}</div>
-        </div>
-        <div>
-          <div className={cn('text-lg font-semibold tabular-nums', left === 0 ? 'text-stone-400' : 'text-accent-700')}>{left}</div>
-          <div className="text-[11px] text-stone-500">{t('packages.sessionsLeft')}</div>
-        </div>
-      </div>
+      {hasCompleteData ? (
+        <>
+          <div className="grid grid-cols-3 gap-3 rounded-lg bg-stone-50 p-3 text-center">
+            <div>
+              <div className="text-lg font-semibold text-stone-900 tabular-nums">{formatMoney(pkg.totalPrice ?? 0, pkg.currency ?? 'USD')}</div>
+              <div className="text-[11px] text-stone-500">{t('packages.price')}</div>
+            </div>
+            <div>
+              <div className="text-lg font-semibold text-stone-900 tabular-nums">{formatMoney(perSessionPrice(pkg), pkg.currency ?? 'USD')}</div>
+              <div className="text-[11px] text-stone-500">{t('packages.perSession')}</div>
+            </div>
+            <div>
+              <div className={cn('text-lg font-semibold tabular-nums', left === 0 ? 'text-stone-400' : 'text-accent-700')}>{left}</div>
+              <div className="text-[11px] text-stone-500">{t('packages.sessionsLeft')}</div>
+            </div>
+          </div>
 
-      <Progress.Root value={pkg.sessionsUsed} max={Math.max(1, pkg.sessionsTotal)} className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between text-xs text-stone-500">
-          <Progress.Label>
-            {t('packages.used', { used: pkg.sessionsUsed, total: pkg.sessionsTotal })}
-          </Progress.Label>
-          <Progress.Value />
+          <Progress.Root value={pkg.sessionsUsed ?? 0} max={Math.max(1, pkg.sessionsTotal ?? 1)} className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-xs text-stone-500">
+              <Progress.Label>
+                {t('packages.used', { used: pkg.sessionsUsed ?? 0, total: pkg.sessionsTotal ?? 0 })}
+              </Progress.Label>
+              <Progress.Value />
+            </div>
+            <Progress.Track className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
+              <Progress.Indicator
+                className={cn('h-full rounded-full transition-[width] duration-300', left === 0 ? 'bg-stone-400' : 'bg-accent-500')}
+              />
+            </Progress.Track>
+          </Progress.Root>
+        </>
+      ) : (
+        <div className="text-center text-sm text-stone-500 py-2">
+          {t('packages.incompleteData')}
         </div>
-        <Progress.Track className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
-          <Progress.Indicator
-            className={cn('h-full rounded-full transition-[width] duration-300', left === 0 ? 'bg-stone-400' : 'bg-accent-500')}
-          />
-        </Progress.Track>
-      </Progress.Root>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
-        <span>{t('packages.signed', { date: fmtDate(pkg.purchasedAt, true) })}</span>
+        {pkg.purchasedAt ? (
+          <span>{t('packages.signed', { date: fmtDate(pkg.purchasedAt, true) })}</span>
+        ) : (
+          <span>{t('packages.noSignedDate')}</span>
+        )}
         {pkg.expiresAt ? (
           <span className={cn(status === 'expiring' && 'font-medium text-amber-700', status === 'expired' && 'text-red-600')}>
             {days !== null && days < 0

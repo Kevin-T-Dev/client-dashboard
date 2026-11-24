@@ -1,7 +1,7 @@
 export const CURRENCIES = [
-  'USD',
-  'SGD',
   'MYR',
+  'SGD',
+  'USD',
   'EUR',
   'GBP',
   'AUD',
