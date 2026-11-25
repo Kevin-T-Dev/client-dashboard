@@ -41,6 +41,7 @@ export default function App() {
                 <Route path="appointments" element={<AppointmentsPage />}>
                   <Route index element={<Navigate to="schedule" replace />} />
                   <Route path="schedule" element={<AppointmentSchedule />} />
+                  <Route path="package" element={<Navigate to="/appointments/packages" replace />} />
                   <Route path="packages" element={<PackageCounter />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
