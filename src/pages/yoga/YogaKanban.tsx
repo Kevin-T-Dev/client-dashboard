@@ -318,7 +318,7 @@ function TaskCardView({ task, onOpen, dragging, dragProps }: TaskCardViewProps) 
       }}
       className={cn(
         'w-full cursor-grab touch-none rounded-lg border border-stone-200 bg-white p-3 text-left shadow-xs active:cursor-grabbing',
-        dragging && 'rotate-1 cursor-grabbing shadow-lg ring-2 ring-brand-300',
+        dragging && 'cursor-grabbing shadow-lg ring-2 ring-brand-300',
       )}
       {...dragProps}
     >
