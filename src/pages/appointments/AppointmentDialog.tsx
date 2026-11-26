@@ -60,23 +60,23 @@ function AppointmentForm({
   const [status, setStatus] = useState<AppointmentStatus>(appointment?.status ?? 'upcoming')
   const [dateKey, setDateKey] = useState(initial.dateKey)
   const [time, setTime] = useState(initial.time)
-  const [duration, setDuration] = useState(String(initial.durationMinutes))
+  const [hours, setHours] = useState(String(Math.floor(initial.durationMinutes / 60)))
+  const [minutes, setMinutes] = useState(String(initial.durationMinutes % 60))
   const [packageId, setPackageId] = useState(appointment?.packageId ?? NONE)
   const [notes, setNotes] = useState(appointment?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const usable = packages.filter((p) => p.id === appointment?.packageId || sessionsRemaining(p) > 0)
   const packageItems = [
     { value: NONE, label: t('appointmentForm.noPackage') },
-    ...usable.map((p) => ({
-      value: p.id,
-      label: `${t('appointmentForm.packageOption', { name: p.name, provider: p.provider, left: sessionsRemaining(p) })}${packageStatus(p) === 'expired' ? ` ${t('appointmentForm.expired')}` : ''}`,
-    })),
+    ...packages.map((pkg) => {
+      const status = packageStatus(pkg)
+      const label = status === 'incomplete'
+        ? [pkg.name, pkg.provider, labels.packageStatusLabel.incomplete].join(' · ')
+        : t('appointmentForm.packageOption', { name: pkg.name, provider: pkg.provider, left: sessionsRemaining(pkg) })
+      return { value: pkg.id, label: status === 'expired' ? `${label} ${t('appointmentForm.expired')}` : label }
+    }),
   ]
-  const durationItems = labels.durations.some((d) => d.value === duration)
-    ? labels.durations
-    : [...labels.durations, { value: duration, label: t('duration.customCount', { n: Number(duration) || 0 }) }]
 
   function pickPackage(id: string) {
     setPackageId(id)
@@ -93,6 +93,11 @@ function AppointmentForm({
     if (!title.trim()) return setError(t('appointmentForm.needTitle'))
     if (!provider.trim()) return setError(t('appointmentForm.needStore'))
     if (!dateKey || !time) return setError(t('appointmentForm.needWhen'))
+    const duration = Number(hours) * 60 + Number(minutes)
+    const end = new Date(Date.parse(`${dateKey}T${time}`) + duration * 60_000)
+    if (![hours, minutes].every((value) => /^\d*$/.test(value)) || Number(minutes) > 59 || duration < 1 || Number.isNaN(end.getTime())) {
+      return setError(t('appointmentForm.needDuration'))
+    }
     setError(null)
     setSaving(true)
     try {
@@ -102,7 +107,7 @@ function AppointmentForm({
         provider: provider.trim(),
         location: location.trim() || undefined,
         status,
-        ...buildRange(dateKey, time, Number(duration) || 60),
+        ...buildRange(dateKey, time, duration),
         packageId: packageId === NONE ? undefined : packageId,
         notes: notes.trim() || undefined,
       }
@@ -151,9 +156,17 @@ function AppointmentForm({
         <FormField label={t('common.startTime')}>
           <TimePicker value={time} onValueChange={setTime} />
         </FormField>
-        <FormField label={t('common.duration')}>
-          <AppSelect value={duration} onValueChange={setDuration} items={durationItems} tone="accent" />
-        </FormField>
+        <fieldset className="min-w-0">
+          <legend className="mb-1.5 text-sm font-medium text-stone-700">{t('common.duration')}</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <FormField label={t('appointmentForm.hours')}>
+              <TextInput type="number" min={0} step={1} placeholder="0" value={hours} onValueChange={setHours} />
+            </FormField>
+            <FormField label={t('appointmentForm.minutes')}>
+              <TextInput type="number" min={0} max={59} step={1} placeholder="0" value={minutes} onValueChange={setMinutes} />
+            </FormField>
+          </div>
+        </fieldset>
         <FormField label={t('common.status')}>
           <AppSelect value={status} onValueChange={setStatus} items={labels.appointmentStatuses} tone="accent" />
         </FormField>

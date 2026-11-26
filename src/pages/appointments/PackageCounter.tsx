@@ -1,16 +1,13 @@
-import { Progress } from '@base-ui/react/progress'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarClock, Minus, Pencil, Plus, Receipt, Search, Store, Trash, TriangleAlert, Wallet } from 'lucide-react'
+import { Minus, Pencil, Plus, Receipt, Search, Trash } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionMenu } from '@/components/ui/ActionMenu'
 import { Badge, type BadgeTone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { inputClass } from '@/components/ui/Field'
-import { StatTile } from '@/components/ui/StatTile'
 import { notify } from '@/components/ui/Toaster'
 import { deletePackageDeep, packagesApi } from '@/db/api'
 import { db } from '@/db/db'
@@ -20,13 +17,14 @@ import { fmtDate } from '@/lib/dates'
 import { useAppLabels } from '@/lib/labels'
 import { formatMoney } from '@/lib/money'
 import {
-  daysUntil,
   packageStatus,
   perSessionPrice,
   sessionsRemaining,
   type PackageStatus,
 } from '@/lib/packages'
 import { PackageDialog } from './PackageDialog'
+
+const emptyPackages: BeautyPackage[] = []
 
 type StatusFilter = PackageStatus | 'all'
 
@@ -50,7 +48,7 @@ export function PackageCounter() {
     { value: 'expired', label: labels.packageStatusLabel.expired },
     { value: 'incomplete', label: labels.packageStatusLabel.incomplete },
   ]
-  const packages = useLiveQuery(() => db.packages.toArray(), []) ?? []
+  const packages = useLiveQuery(() => db.packages.toArray(), []) ?? emptyPackages
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [query, setQuery] = useState('')
   const [dialog, setDialog] = useState<{ open: boolean; pkg?: BeautyPackage }>({ open: false })
@@ -79,21 +77,9 @@ export function PackageCounter() {
     )
   })
 
-  const live = withStatus.filter(({ status }) => status === 'active' || status === 'expiring')
-  const remaining = live.reduce((s, { pkg }) => s + sessionsRemaining(pkg), 0)
-  const expiringCount = withStatus.filter(({ status }) => status === 'expiring').length
-  const invested = useMemo(() => {
-    const byCurrency = new Map<string, number>()
-    for (const p of packages) {
-      const currency = p.currency ?? 'USD'
-      const price = p.totalPrice ?? 0
-      byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + price)
-    }
-    return [...byCurrency.entries()].map(([c, v]) => formatMoney(v, c)).join(' · ') || formatMoney(0, 'USD')
-  }, [packages])
   const providers = useMemo(() => [...new Set(packages.map((p) => p.provider))].sort(), [packages])
 
-  async function useSession(pkg: BeautyPackage) {
+  async function recordSession(pkg: BeautyPackage) {
     if (sessionsRemaining(pkg) === 0) return
     await packagesApi.update(pkg.id, { sessionsUsed: (pkg.sessionsUsed ?? 0) + 1 })
     const left = sessionsRemaining(pkg) - 1
@@ -111,24 +97,6 @@ export function PackageCounter() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatTile label={t('packages.invested')} value={invested} icon={<Wallet size={18} />} tone="accent" />
-        <StatTile
-          label={t('packages.active')}
-          value={live.length}
-          hint={t('packages.onRecord', { n: packages.length })}
-          icon={<Receipt size={18} />}
-          tone="accent"
-        />
-        <StatTile label={t('packages.leftToUse')} value={remaining} icon={<CalendarClock size={18} />} />
-        <StatTile
-          label={t('packages.expiring')}
-          value={expiringCount}
-          icon={<TriangleAlert size={18} />}
-          tone={expiringCount ? 'warning' : 'neutral'}
-        />
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1 rounded-xl bg-stone-100 p-1">
           {filters.map((f) => (
@@ -174,18 +142,30 @@ export function PackageCounter() {
           }
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {visible.map(({ pkg, status }) => (
-            <PackageCard
-              key={pkg.id}
-              pkg={pkg}
-              status={status}
-              onUse={() => void useSession(pkg)}
-              onUndo={() => void undoSession(pkg)}
-              onEdit={() => setDialog({ open: true, pkg })}
-              onDelete={() => setDeleting(pkg)}
-            />
-          ))}
+        <div className="max-w-full overflow-x-auto rounded-xl border border-stone-200 bg-white">
+          <table aria-label={t('appointments.packages')} className="w-full text-left text-sm">
+            <thead className="bg-stone-50 text-xs text-stone-600">
+              <tr>
+                {['appointmentForm.package', 'appointmentForm.store', 'common.status', 'packages.price',
+                  'packages.sessionsLeft', 'packageForm.signed', 'packageForm.expires', 'common.moreActions'].map((key) => (
+                  <th key={key} scope="col" className="whitespace-nowrap px-4 py-3 font-medium">{t(key)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {visible.map(({ pkg, status }) => (
+                <PackageRow
+                  key={pkg.id}
+                  pkg={pkg}
+                  status={status}
+                  onUse={() => void recordSession(pkg)}
+                  onUndo={() => void undoSession(pkg)}
+                  onEdit={() => setDialog({ open: true, pkg })}
+                  onDelete={() => setDeleting(pkg)}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -212,7 +192,7 @@ export function PackageCounter() {
   )
 }
 
-interface PackageCardProps {
+interface PackageRowProps {
   pkg: BeautyPackage
   status: PackageStatus
   onUse: () => void
@@ -221,108 +201,45 @@ interface PackageCardProps {
   onDelete: () => void
 }
 
-function PackageCard({ pkg, status, onUse, onUndo, onEdit, onDelete }: PackageCardProps) {
+function PackageRow({ pkg, status, onUse, onUndo, onEdit, onDelete }: PackageRowProps) {
   const { t } = useTranslation()
   const labels = useAppLabels()
   const left = sessionsRemaining(pkg)
-  const days = pkg.expiresAt ? daysUntil(pkg.expiresAt) : null
-  const when = days === null ? '' : days === 1 ? t('common.day', { n: days }) : t('common.day_other', { n: days })
-  const hasCompleteData = pkg.totalPrice !== undefined && pkg.currency !== undefined && pkg.sessionsTotal !== undefined && pkg.sessionsUsed !== undefined && pkg.purchasedAt !== undefined
+  const knownBalance = pkg.sessionsTotal !== undefined && pkg.sessionsUsed !== undefined
+  const { totalPrice, currency } = pkg
+  const hasPrice = totalPrice !== undefined && currency !== undefined
 
   return (
-    <Card className={cn('flex flex-col gap-4 p-5', status === 'expired' && 'opacity-75')}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold text-stone-900">{pkg.name}</h3>
-            <Badge tone={statusTone[status]}>{labels.packageStatusLabel[status]}</Badge>
-          </div>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-stone-500">
-            <Store size={14} className="shrink-0" />
-            <span className="truncate">{pkg.provider}</span>
-            {pkg.location && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="truncate">{pkg.location}</span>
-              </>
-            )}
-            <span aria-hidden="true">·</span>
-            <span>{labels.categoryLabel[pkg.category]}</span>
-          </p>
-        </div>
-        <ActionMenu
-          items={[
+    <tr className="align-top text-stone-700 hover:bg-stone-50/50 [&>td]:px-4 [&>td]:py-3">
+      <th scope="row" className="min-w-40 px-4 py-3 font-medium text-stone-900">
+        {pkg.name}
+        <div className="text-xs font-normal text-stone-500">{labels.categoryLabel[pkg.category]}</div>
+        {pkg.notes && <p className="mt-1 whitespace-pre-line break-words text-xs font-normal text-stone-600">{pkg.notes}</p>}
+      </th>
+      <td>{pkg.provider}{pkg.location && <div className="text-xs text-stone-500">{pkg.location}</div>}</td>
+      <td><Badge tone={statusTone[status]}>{labels.packageStatusLabel[status]}</Badge></td>
+      <td className="whitespace-nowrap tabular-nums">
+        {hasPrice ? formatMoney(totalPrice, currency) : '—'}
+        {hasPrice && (pkg.sessionsTotal ?? 0) > 0 && (
+          <div className="text-xs text-stone-500">{t('packages.perSession')} · {formatMoney(perSessionPrice(pkg), currency)}</div>
+        )}
+      </td>
+      <td className="whitespace-nowrap tabular-nums">
+        {knownBalance ? left : '—'}
+        {knownBalance && <div className="text-xs text-stone-500">{t('packages.used', { used: pkg.sessionsUsed, total: pkg.sessionsTotal })}</div>}
+      </td>
+      <td className="whitespace-nowrap">{pkg.purchasedAt ? fmtDate(pkg.purchasedAt, true) : '—'}</td>
+      <td className="whitespace-nowrap">{pkg.expiresAt ? fmtDate(pkg.expiresAt, true) : t('packages.noExpiry')}</td>
+      <td>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <Button variant="accent" size="sm" onClick={onUse} disabled={left === 0}>{t('packages.use')}</Button>
+          <ActionMenu items={[
             { label: t('common.edit'), icon: <Pencil size={14} />, onClick: onEdit },
             { label: t('packages.undo'), icon: <Minus size={14} />, onClick: onUndo, disabled: (pkg.sessionsUsed ?? 0) === 0 },
             { label: t('common.delete'), icon: <Trash size={14} />, danger: true, onClick: onDelete },
-          ]}
-        />
-      </div>
-
-      {hasCompleteData ? (
-        <>
-          <div className="grid grid-cols-3 gap-3 rounded-lg bg-stone-50 p-3 text-center">
-            <div>
-              <div className="text-lg font-semibold text-stone-900 tabular-nums">{formatMoney(pkg.totalPrice ?? 0, pkg.currency ?? 'USD')}</div>
-              <div className="text-[11px] text-stone-500">{t('packages.price')}</div>
-            </div>
-            <div>
-              <div className="text-lg font-semibold text-stone-900 tabular-nums">{formatMoney(perSessionPrice(pkg), pkg.currency ?? 'USD')}</div>
-              <div className="text-[11px] text-stone-500">{t('packages.perSession')}</div>
-            </div>
-            <div>
-              <div className={cn('text-lg font-semibold tabular-nums', left === 0 ? 'text-stone-400' : 'text-accent-700')}>{left}</div>
-              <div className="text-[11px] text-stone-500">{t('packages.sessionsLeft')}</div>
-            </div>
-          </div>
-
-          <Progress.Root value={pkg.sessionsUsed ?? 0} max={Math.max(1, pkg.sessionsTotal ?? 1)} className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-xs text-stone-500">
-              <Progress.Label>
-                {t('packages.used', { used: pkg.sessionsUsed ?? 0, total: pkg.sessionsTotal ?? 0 })}
-              </Progress.Label>
-              <Progress.Value />
-            </div>
-            <Progress.Track className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
-              <Progress.Indicator
-                className={cn('h-full rounded-full transition-[width] duration-300', left === 0 ? 'bg-stone-400' : 'bg-accent-500')}
-              />
-            </Progress.Track>
-          </Progress.Root>
-        </>
-      ) : (
-        <div className="text-center text-sm text-stone-500 py-2">
-          {t('packages.incompleteData')}
+          ]} />
         </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
-        {pkg.purchasedAt ? (
-          <span>{t('packages.signed', { date: fmtDate(pkg.purchasedAt, true) })}</span>
-        ) : (
-          <span>{t('packages.noSignedDate')}</span>
-        )}
-        {pkg.expiresAt ? (
-          <span className={cn(status === 'expiring' && 'font-medium text-amber-700', status === 'expired' && 'text-red-600')}>
-            {days !== null && days < 0
-              ? t('packages.expiredOn', { date: fmtDate(pkg.expiresAt, true) })
-              : t('packages.expiresOn', { date: fmtDate(pkg.expiresAt, true), when })}
-          </span>
-        ) : (
-          <span>{t('packages.noExpiry')}</span>
-        )}
-      </div>
-
-      {pkg.notes && <p className="rounded-lg border border-stone-100 bg-stone-50/60 px-3 py-2 text-sm text-stone-600">{pkg.notes}</p>}
-
-      <div className="mt-auto flex items-center gap-2 pt-1">
-        <Button variant="accent" size="sm" leadingIcon={<Minus size={14} />} onClick={onUse} disabled={left === 0}>
-          {t('packages.use')}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onEdit}>
-          {t('packages.editDetails')}
-        </Button>
-      </div>
-    </Card>
+      </td>
+    </tr>
   )
 }
