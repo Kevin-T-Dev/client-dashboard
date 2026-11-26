@@ -42,7 +42,7 @@ const CaptionContext = createContext<CaptionContextValue | null>(null)
 /** Month/year dropdowns using native <select> (no nested portal, so clicks aren't swallowed by the popover). */
 function MonthCaption({ calendarMonth }: MonthCaptionProps) {
   const ctx = useContext(CaptionContext)
-  if (!ctx) return null
+  if (!ctx) return <></>
   const current = calendarMonth.date
   const month = current.getMonth()
   const year = current.getFullYear()
